@@ -58,6 +58,8 @@ class AKL_Paths(object):
         self.DATABASE_FILE_PATH = self.ADDON_DATA_DIR.pjoin('akl.db')
         # --- datetime peek file for automatic scanning ---
         self.SCAN_INDICATOR_FILE = self.ADDON_DATA_DIR.pjoin('auto_scan.txt')
+        # Per-platform artwork presentation preferences used by AKL-aware skins.
+        self.ARTWORK_PREFS_FILE_PATH = self.ADDON_DATA_DIR.pjoin('artwork_preferences.json')
 
         # --- Offline scraper databases ---
         self.GAMEDB_INFO_DIR = self.ADDON_CODE_DIR.pjoin('data-AOS')
