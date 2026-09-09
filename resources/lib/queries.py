@@ -402,12 +402,20 @@ SELECT_FAVOURITES_ROM_ASSETS = """
     WHERE r.is_favourite = 1
     """
 SELECT_RECENTLY_PLAYED_ROM_ASSETS = """
-    SELECT ra.* FROM vw_rom_assets AS ra INNER JOIN roms AS r ON r.id = ra.rom_id
-    WHERE r.last_launch_timestamp IS NOT NULL ORDER BY last_launch_timestamp DESC LIMIT 100
+    SELECT ra.* FROM vw_rom_assets AS ra
+    INNER JOIN (
+        SELECT id FROM roms
+        WHERE last_launch_timestamp IS NOT NULL
+        ORDER BY last_launch_timestamp DESC LIMIT 100
+    ) AS recent ON recent.id = ra.rom_id
     """
 SELECT_MOST_PLAYED_ROM_ASSETS = """
-    SELECT ra.* FROM vw_rom_assets AS ra INNER JOIN roms AS r ON r.id = ra.rom_id
-    WHERE r.launch_count > 0 ORDER BY launch_count DESC LIMIT 100
+    SELECT ra.* FROM vw_rom_assets AS ra
+    INNER JOIN (
+        SELECT id FROM roms
+        WHERE launch_count > 0
+        ORDER BY launch_count DESC LIMIT 100
+    ) AS most_played ON most_played.id = ra.rom_id
     """
 
 SELECT_BY_TITLE = "SELECT * FROM vw_roms WHERE m_name LIKE ? || '%'"
