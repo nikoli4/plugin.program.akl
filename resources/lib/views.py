@@ -35,6 +35,7 @@ from __future__ import annotations
 import sys
 import abc
 import logging
+import time
 
 # --- Kodi stuff ---
 import xbmc
@@ -44,7 +45,7 @@ import xbmcplugin
 from akl import constants
 from akl.utils import kodi
 
-from resources.lib import viewqueries, globals
+from resources.lib import viewqueries, globals, artwork_preferences
 from resources.lib.commands.mediator import AppMediator
 from resources.lib.commands import view_rendering_commands
 from resources.lib.globals import router
@@ -239,6 +240,36 @@ def vw_edit_category(category_id: str):
     AppMediator.async_cmd('EDIT_CATEGORY', {'category_id': category_id})
 
 
+@router.route('/artmode/set')
+def vw_set_artwork_mode():
+    # Called by AKL-aware skins. Use a ROM id instead of embedding the platform name
+    # in the URL so platforms containing spaces/symbols are handled safely.
+    rom_id = router.args['rom_id'][0] if 'rom_id' in router.args else None
+    mode = router.args['mode'][0] if 'mode' in router.args else None
+    platform = artwork_preferences.get_platform_for_rom(rom_id)
+    if artwork_preferences.set_mode(platform, mode):
+        # Rebuild the virtual collections that can surface ROMs outside their
+        # normal platform view. Previously these were only regenerated after a
+        # game launch, which made Home/Recently Played appear stale after
+        # changing a platform artwork mode.
+        AppMediator.sync_cmd('RENDER_VCOLLECTION_VIEW', {
+            'vcollection_id': constants.VCOLLECTION_RECENT_ID
+        })
+        AppMediator.sync_cmd('RENDER_VCOLLECTION_VIEW', {
+            'vcollection_id': constants.VCOLLECTION_MOST_PLAYED_ID
+        })
+
+        # The AZR widget URL already includes these Home-window properties as a
+        # reload token. Bump them only after the stored AKL views are rebuilt so
+        # Kodi requests fresh widget items immediately instead of waiting for a
+        # launch/restart.
+        reload_token = str(int(time.time() * 1000))
+        home_window = xbmcgui.Window(10000)
+        home_window.setProperty('widgetreload', reload_token)
+        home_window.setProperty('widgetreload2', reload_token)
+        kodi.refresh_container()
+
+
 @router.route('/romcollection/view/<romcollection_id>')
 def vw_view_romcollection(romcollection_id: str):
     pass
@@ -362,7 +393,14 @@ def _render_list_item(list_item_data: dict) -> xbmcgui.ListItem:
     list_item = xbmcgui.ListItem(name, label2=name2)
     list_item.setInfo(item_type, list_item_data['info'])
     list_item.setArt(list_item_data['art'])
-    list_item.setProperties(list_item_data['properties'])
+
+    # V51: artwork mode is resolved live from the ROM platform. This means the same
+    # preference follows a game into virtual collections and Home widgets without
+    # having to regenerate every stored AKL view when the preference changes.
+    properties = dict(list_item_data['properties'])
+    if properties.get('obj_type') == constants.OBJ_ROM:
+        properties['akl_art_mode'] = artwork_preferences.get_mode(properties.get('platform'))
+    list_item.setProperties(properties)
 
     return list_item
 

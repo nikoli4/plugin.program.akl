@@ -837,6 +837,15 @@ def render_rom_listitem(rom_obj: ROM) -> dict:
     else:
         item_url = globals.router.url_for_path(f'rom/view/{rom_obj.get_id()}')
 
+    # Kodi's video ListItem API expects LastPlayed as a formatted string,
+    # not a Python datetime object.  Supplying the exact expected format is
+    # important because the Home dynamic-content widget sorts on lastplayed.
+    last_launch = rom_obj.get_last_launch_date()
+    if last_launch is not None and hasattr(last_launch, 'strftime'):
+        lastplayed_value = last_launch.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        lastplayed_value = str(last_launch) if last_launch else ''
+
     return {
         'id': rom_obj.get_id(),
         'name': list_name,
@@ -852,6 +861,9 @@ def render_rom_listitem(rom_obj: ROM) -> dict:
             'rating': rom_obj.get_rating(),
             'plot': rom_obj.get_plot(),
             'trailer': rom_obj.get_trailer(),
+            # Expose AKL's launch timestamp through Kodi's standard video info field
+            # so skin widgets can sort Recently Played ROMs by lastplayed.
+            'lastplayed': lastplayed_value,
             'overlay': ICON_OVERLAY
         },
         'art': assets,
