@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.program.akl" name="Advanced Kodi Launcher" version="1.0.4-rc0" provider-name="chrisism">
+<addon id="plugin.program.akl" name="Advanced Kodi Launcher Revival" version="1.0.4-rc0" provider-name="chrisism, nikoli4">
   <requires>
       <import addon="xbmc.python" version="3.0.0"/>
       <import addon="script.module.routing" version="0.2.3"/>
@@ -16,8 +16,8 @@
     <license>GNU General Public License version 2</license>
     <email>crizzz@gmail.com</email>
     <forum>https://forum.kodi.tv/showthread.php?tid=366351</forum>
-    <website>https://github.com/chrisism/plugin.program.akl</website>
-    <source>https://github.com/chrisism/plugin.program.akl</source>
+    <website>https://github.com/nikoli4/plugin.program.akl</website>
+    <source>https://github.com/nikoli4/plugin.program.akl</source>
     <assets>
       <icon>media/icon.png</icon>
       <fanart>media/fanart.jpg</fanart>
