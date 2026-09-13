@@ -92,7 +92,7 @@ def vw_route_render_root():
     container = viewqueries.qry_get_root_items()
     container_context_items = viewqueries.qry_container_context_menu_items(container)
 
-    _render_list_items(container, container_context_items)
+    _render_list_items(container, container_context_items, preserve_order=True)
     xbmcplugin.endOfDirectory(handle=router.handle, succeeded=True, cacheToDisc=False)
 
 
@@ -356,8 +356,15 @@ def vw_view_rom_scanneddata(rom_id):
 #
 # Renders items for a view.
 #
-def _render_list_items(container_data: dict, container_context_items=[], filter_method: ListFilter = None):
-    vw_misc_set_all_sorting_methods()
+def _render_list_items(container_data: dict, container_context_items=[], filter_method: ListFilter = None,
+                       preserve_order: bool = False):
+    if preserve_order:
+        xbmcplugin.addSortMethod(
+            handle=router.handle,
+            sortMethod=xbmcplugin.SORT_METHOD_UNSORTED
+        )
+    else:
+        vw_misc_set_all_sorting_methods()
     vw_misc_set_AEL_Content(container_data['obj_type'] if 'obj_type' in container_data else constants.OBJ_NONE)
     vw_misc_clear_AEL_Launcher_Content()
 
