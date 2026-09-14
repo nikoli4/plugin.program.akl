@@ -20,12 +20,16 @@ from __future__ import division
 import logging
 import typing
 import time
+import os
+import shutil
+
+import xbmcvfs
 
 from datetime import datetime
 from datetime import timedelta
 
 from akl import constants, settings
-from akl.utils import kodi
+from akl.utils import kodi, io
 
 from resources.lib.commands.mediator import AppMediator
 from resources.lib import globals
@@ -779,6 +783,75 @@ def render_rom_listitem(rom_obj: ROM) -> dict:
 
     ICON_OVERLAY = 5 if rom_obj.is_finished() else 4
     assets = rom_obj.get_view_assets()
+    
+    for asset_id, asset_path in list(assets.items()):
+        if not asset_path:
+            continue
+
+        try:
+            asset_file = io.FileName(asset_path)
+
+            # Only create display aliases for image artwork.
+            # Leave videos and manuals untouched.
+            if asset_file.isVideoFile() or asset_file.isManualFile():
+                continue
+
+            # Ignore Kodi/default resources rather than treating them
+            # as normal filesystem artwork.
+            if not os.path.isfile(asset_path):
+                continue
+
+            source_mtime = int(os.path.getmtime(asset_path))
+
+            display_dir = xbmcvfs.translatePath(
+                'special://profile/addon_data/plugin.program.akl/art_display_cache/'
+            )
+
+            if not os.path.isdir(display_dir):
+                os.makedirs(display_dir, exist_ok=True)
+
+            source_ext = os.path.splitext(asset_path)[1]
+
+            display_path = os.path.join(
+                display_dir,
+                'akl_rom_{}_{}_{}{}'.format(
+                    rom_obj.get_id(),
+                    asset_id,
+                    source_mtime,
+                    source_ext
+                )
+            )
+            display_path = display_path.replace('\\', '/')
+            
+            if not os.path.isfile(display_path):
+                alias_prefix = 'akl_rom_{}_{}_'.format(
+                    rom_obj.get_id(),
+                    asset_id
+                )
+
+                for existing_name in os.listdir(display_dir):
+                    if existing_name.startswith(alias_prefix):
+                        existing_path = os.path.join(display_dir, existing_name)
+                        existing_path = existing_path.replace('\\', '/')
+
+                        if existing_path != display_path:
+                            try:
+                                os.remove(existing_path)
+                            except Exception:
+                                logger.exception(
+                                    'AKL ART DISPLAY CACHE: old ROM alias delete failed: "{}"'.format(
+                                        existing_path
+                                    )
+                                )
+
+                shutil.copy2(asset_path, display_path)
+
+            assets[asset_id] = display_path
+
+        except Exception:
+            logger.exception(
+                'AKL ART DISPLAY CACHE: ROM alias update failed: asset="{}"'.format(asset_id)
+            )
 
     # --- Default values for flags ---
     AKL_InFav_bool_value = constants.AKL_INFAV_BOOL_VALUE_FALSE

@@ -22,8 +22,11 @@ from __future__ import division
 
 import logging
 import collections
+import shutil
+import os
 
 import xbmcgui
+import xbmcvfs
 
 from akl.utils import kodi, io, text
 from akl import constants, settings
@@ -209,7 +212,70 @@ def edit_object_assets(obj_instance: MetaDataItemABC, preselected_asset=None) ->
                 item_img = asset_fname_str
         else:
             item_img = 'DefaultAddonNone.png'
-        list_item.setArt({'icon': item_img})
+
+        if (
+            asset_fname_str
+            and not item_path.isVideoFile()
+            and not item_path.isManualFile()
+        ):
+            source_mtime = int(os.path.getmtime(item_img))
+
+            display_dir = xbmcvfs.translatePath(
+                'special://profile/addon_data/plugin.program.akl/art_display_cache/'
+            )
+
+            if not os.path.isdir(display_dir):
+                os.makedirs(display_dir, exist_ok=True)
+
+            source_ext = os.path.splitext(item_img)[1]
+
+            display_icon = os.path.join(
+                display_dir,
+                'akl_asset_{}_{}_{}{}'.format(
+                    obj_instance.get_id(),
+                    asset_info_obj.id,
+                    source_mtime,
+                    source_ext
+                )
+            )
+            display_icon = display_icon.replace('\\', '/')
+            
+            if not os.path.isfile(display_icon):
+                alias_prefix = 'akl_asset_{}_{}_'.format(
+                    obj_instance.get_id(),
+                    asset_info_obj.id
+                )
+
+                for existing_name in os.listdir(display_dir):
+                    if existing_name.startswith(alias_prefix):
+                        existing_path = os.path.join(display_dir, existing_name)
+                        existing_path = existing_path.replace('\\', '/')
+
+                        if existing_path != display_icon:
+                            try:
+                                os.remove(existing_path)
+                            except Exception:
+                                logger.exception(
+                                    'AKL ART DISPLAY CACHE: old asset alias delete failed: "{}"'.format(
+                                        existing_path
+                                    )
+                                )
+
+                try:
+                    shutil.copy2(item_img, display_icon)
+                except Exception:
+                    logger.exception(
+                        'AKL ART DISPLAY CACHE: asset alias copy failed: asset="{}"'.format(
+                            asset_info_obj.id
+                        )
+                    )
+                    list_item.setArt({'icon': item_img})
+                    continue
+
+            list_item.setArt({'icon': display_icon})
+        else:
+            list_item.setArt({'icon': item_img})
+
         # --- Append to list of ListItems ---
         options[asset_info_obj.id] = list_item
 
@@ -426,7 +492,6 @@ def edit_asset(obj_instance: MetaDataItemABC, asset_info: AssetInfo, assets_dire
         # --- Delete cached image to force a cache update ---
         try:
             kodi.delete_cache_texture(dest_asset_file.getPath())
-            kodi.print_texture_info(dest_asset_file.getPath())
         except Exception:
             logger.exception("Failed to delete cache")
 
