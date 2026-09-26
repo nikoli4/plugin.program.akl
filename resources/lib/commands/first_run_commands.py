@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Advanced Kodi Launcher: First-Run Setup Assistant
+# Advanced Kodi Launcher Revival: First-Run Setup Assistant
 #
 
 from __future__ import unicode_literals

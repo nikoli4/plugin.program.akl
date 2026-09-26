@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 @AppMediator.register('OPEN_SETTINGS')
 def cmd_open_settings(args):
-    logger.info('Opening Advanced Kodi Launcher settings.')
+    logger.info('Opening Advanced Kodi Launcher Revival settings.')
     xbmcaddon.Addon('plugin.program.akl').openSettings()
 
 

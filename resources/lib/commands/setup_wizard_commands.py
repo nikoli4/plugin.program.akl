@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Advanced Kodi Launcher: Setup / New System Wizard
+# Advanced Kodi Launcher Revival: Setup / New System Wizard
 #
 
 from __future__ import unicode_literals

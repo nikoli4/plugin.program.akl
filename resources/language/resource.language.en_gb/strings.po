@@ -1,6 +1,6 @@
 # Kodi Media Center language file
-# Addon Name: Advanced Kodi Launcher
-# Addon id: plugin.program.AEL
+# Addon Name: Advanced Kodi Launcher Revival
+# Addon id: plugin.program.akl
 
 # strings 30000 thru 30999 reserved for plugins and plugin settings
 # strings 31000 thru 31999 reserved for skins
@@ -2576,7 +2576,7 @@ msgid "Don't Ask Again"
 msgstr ""
 
 msgctxt "#44094"
-msgid "Welcome to Advanced Kodi Launcher"
+msgid "Welcome to Advanced Kodi Launcher Revival"
 msgstr ""
 
 msgctxt "#44095"
@@ -2788,5 +2788,5 @@ msgid "AKL Settings"
 msgstr ""
 
 msgctxt "#44147"
-msgid "Open the Advanced Kodi Launcher settings."
+msgid "Open the Advanced Kodi Launcher Revival settings."
 msgstr ""
