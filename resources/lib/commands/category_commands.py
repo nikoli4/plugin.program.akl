@@ -36,6 +36,17 @@ def cmd_add_item(args):
     logger.debug('cmd_add_item() BEGIN')
     
     options = collections.OrderedDict()
+
+    options['SETUP_WIZARD'] = kodi.get_listitem(
+        kodi.translate(44042),
+        kodi.translate(44107)
+    )
+
+    options['FIRST_RUN_SETUP'] = kodi.get_listitem(
+        kodi.translate(44108),
+        kodi.translate(44109)
+    )
+
     options['ADD_SOURCE'] = kodi.get_listitem(kodi.translate(42506), kodi.translate(44034))
     options['ADD_LAUNCHER'] = kodi.get_listitem(kodi.translate(42514), kodi.translate(44035))
     options['ADD_CATEGORY'] = kodi.get_listitem(kodi.translate(42501), kodi.translate(44036))

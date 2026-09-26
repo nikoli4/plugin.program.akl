@@ -666,10 +666,6 @@ msgctxt "#40879"
 msgid "Save NFO file (default location)"
 msgstr ""
 
-msgctxt "#40879"
-msgid "Load Plot from TXT file ..."
-msgstr ""
-
 msgctxt "#40880"
 msgid "Load Plot from TXT file ..."
 msgstr ""
@@ -2216,7 +2212,7 @@ msgid "Generate and view [COLOR orange]Global Reports[/COLOR]."
 msgstr "viewqueries"
 
 msgctxt "#44003"
-msgid "Reset the AKL database. You will loose all data."
+msgid "Reset the AKL database. You will lose all data."
 msgstr "viewqueries"
 
 msgctxt "#44004"
@@ -2292,7 +2288,7 @@ msgid "Manage existing/available tags for ROMs"
 msgstr "viewqueries"
 
 msgctxt "#44022"
-msgid "Execute several [COLOR orange]Utilities[/COLOR]."
+msgid "Import categories and ROM collections from an AKL XML configuration file."
 msgstr "viewqueries"
 
 msgctxt "#44023"
@@ -2353,4 +2349,444 @@ msgstr ""
 
 msgctxt "#44037"
 msgid "Create a specific collection of games/ROMs from your sources"
+msgstr ""
+
+msgctxt "#44038"
+msgid "Default ROMs root"
+msgstr ""
+
+msgctxt "#44039"
+msgid "Default Emulators root"
+msgstr ""
+
+msgctxt "#44040"
+msgid "Default Artwork root"
+msgstr ""
+
+msgctxt "#44041"
+msgid "First-run setup completed"
+msgstr ""
+
+msgctxt "#44042"
+msgid "Setup / New System Wizard"
+msgstr ""
+
+msgctxt "#44043"
+msgid "Choose Platform"
+msgstr ""
+
+msgctxt "#44044"
+msgid "Search Platforms"
+msgstr ""
+
+msgctxt "#44045"
+msgid "Browse All Platforms"
+msgstr ""
+
+msgctxt "#44046"
+msgid "No platforms found matching \"{0}\"."
+msgstr ""
+
+msgctxt "#44047"
+msgid "Choose a Display Name for This System"
+msgstr ""
+
+msgctxt "#44048"
+msgid "No ROM scanners are currently available.\n\nUse Check AKL Components to scan for compatible add-ons."
+msgstr ""
+
+msgctxt "#44049"
+msgid "New System Setup"
+msgstr ""
+
+msgctxt "#44050"
+msgid "Choose ROM Scanner"
+msgstr ""
+
+msgctxt "#44051"
+msgid "Choose Artwork / Assets Folder"
+msgstr ""
+
+msgctxt "#44052"
+msgid "Source created successfully.\n\nPlatform:\n{0}\n\nScanner:\n{1}\n\nArtwork / Assets:\n{2}\n\nSource ID:\n{3}"
+msgstr ""
+
+msgctxt "#44053"
+msgid "No launcher providers are currently available.\n\nUse Check AKL Components to scan for compatible add-ons."
+msgstr ""
+
+msgctxt "#44054"
+msgid "Choose Launcher Provider"
+msgstr ""
+
+msgctxt "#44055"
+msgid "Choose Platform - \"{0}\""
+msgstr ""
+
+msgctxt "#44056"
+msgid "Set up a new system"
+msgstr ""
+
+msgctxt "#44057"
+msgid "Check / finish an existing system"
+msgstr ""
+
+msgctxt "#44058"
+msgid "Check AKL components"
+msgstr ""
+
+msgctxt "#44059"
+msgid "ROM Scanners"
+msgstr ""
+
+msgctxt "#44060"
+msgid "Game Scrapers"
+msgstr ""
+
+msgctxt "#44061"
+msgid "Launcher Providers"
+msgstr ""
+
+msgctxt "#44062"
+msgid "{0} available"
+msgstr ""
+
+msgctxt "#44063"
+msgid "None available"
+msgstr ""
+
+msgctxt "#44064"
+msgid "Refresh Components"
+msgstr ""
+
+msgctxt "#44065"
+msgid "Scan Kodi for AKL-compatible add-ons"
+msgstr ""
+
+msgctxt "#44066"
+msgid "AKL Components"
+msgstr ""
+
+msgctxt "#44067"
+msgid "No AKL-compatible components are currently registered."
+msgstr ""
+
+msgctxt "#44068"
+msgid "{0} · v{1}"
+msgstr ""
+
+msgctxt "#44069"
+msgid "No ROM collections are configured."
+msgstr ""
+
+msgctxt "#44070"
+msgid "Select System"
+msgstr ""
+
+msgctxt "#44071"
+msgid "Not configured"
+msgstr ""
+
+msgctxt "#44072"
+msgid "Never"
+msgstr ""
+
+msgctxt "#44073"
+msgid "Unknown"
+msgstr ""
+
+msgctxt "#44074"
+msgid "Multiple"
+msgstr ""
+
+msgctxt "#44075"
+msgid "{0} sources"
+msgstr ""
+
+msgctxt "#44076"
+msgid "All ROMs"
+msgstr ""
+
+msgctxt "#44077"
+msgid "{0} rule(s)"
+msgstr ""
+
+msgctxt "#44078"
+msgid "{0} rule sets"
+msgstr ""
+
+msgctxt "#44079"
+msgid "{0} configured"
+msgstr ""
+
+msgctxt "#44080"
+msgid "Platform"
+msgstr ""
+
+msgctxt "#44081"
+msgid "ROM Source"
+msgstr ""
+
+msgctxt "#44082"
+msgid "Scanner"
+msgstr ""
+
+msgctxt "#44083"
+msgid "ROM Scan"
+msgstr ""
+
+msgctxt "#44084"
+msgid "Import Rules"
+msgstr ""
+
+msgctxt "#44085"
+msgid "Collection"
+msgstr ""
+
+msgctxt "#44086"
+msgid "Launcher"
+msgstr ""
+
+msgctxt "#44087"
+msgid "{0} game(s) found · Last scan: {1}"
+msgstr ""
+
+msgctxt "#44088"
+msgid "{0} game(s) imported"
+msgstr ""
+
+msgctxt "#44089"
+msgid "System Setup Status — {0}"
+msgstr ""
+
+msgctxt "#44090"
+msgid "This setup item is read-only for now.\n\nConfiguration actions will be added after the status screen is verified."
+msgstr ""
+
+msgctxt "#44091"
+msgid "Start Setup"
+msgstr ""
+
+msgctxt "#44092"
+msgid "Not Now"
+msgstr ""
+
+msgctxt "#44093"
+msgid "Don't Ask Again"
+msgstr ""
+
+msgctxt "#44094"
+msgid "Welcome to Advanced Kodi Launcher"
+msgstr ""
+
+msgctxt "#44095"
+msgid "Choose Default Artwork Root"
+msgstr ""
+
+msgctxt "#44096"
+msgid "Choose Default Emulators Root"
+msgstr ""
+
+msgctxt "#44097"
+msgid "Choose Default ROMs Root"
+msgstr ""
+
+msgctxt "#44098"
+msgid "{0} [Installed]"
+msgstr ""
+
+msgctxt "#44099"
+msgid "{0} [Installed - Disabled]"
+msgstr ""
+
+msgctxt "#44100"
+msgid "Choose AKL Components"
+msgstr ""
+
+msgctxt "#44101"
+msgid "Choose Scrapers"
+msgstr ""
+
+msgctxt "#44102"
+msgid "Set up my first system now"
+msgstr ""
+
+msgctxt "#44103"
+msgid "Finish and return to AKL"
+msgstr ""
+
+msgctxt "#44104"
+msgid "AKL Setup Complete"
+msgstr ""
+
+msgctxt "#44105"
+msgid "AKL setup complete."
+msgstr ""
+
+msgctxt "#44106"
+msgid "Default setup paths saved."
+msgstr ""
+
+msgctxt "#44107"
+msgid "Guided setup for a new system or check an existing system"
+msgstr ""
+
+msgctxt "#44108"
+msgid "Run Setup Assistant"
+msgstr ""
+
+msgctxt "#44109"
+msgid "Configure default paths, AKL components, and scrapers"
+msgstr ""
+
+msgctxt "#44110"
+msgid "ROM Cleanup"
+msgstr ""
+
+msgctxt "#44111"
+msgid "Source: {0}\n\nCheck for ROMs whose files no longer exist?\n\nNothing will be removed without confirmation."
+msgstr ""
+
+msgctxt "#44112"
+msgid "This source does not contain any ROMs."
+msgstr ""
+
+msgctxt "#44113"
+msgid "{0} ROM(s) checked.\n0 missing ROMs found.\n\nNothing was removed."
+msgstr ""
+
+msgctxt "#44114"
+msgid "{0} ROM(s) checked.\n{1} missing ROM(s) found.\n\nRemove these {1} ROM(s) from AKL?"
+msgstr ""
+
+msgctxt "#44115"
+msgid "Removed {0} missing ROM(s) from {1}"
+msgstr ""
+
+msgctxt "#44116"
+msgid "System setup is complete and scraping has been queued.\n\nWould you like to set up another system?"
+msgstr ""
+
+msgctxt "#44117"
+msgid "System Setup Complete"
+msgstr ""
+
+msgctxt "#44118"
+msgid "Scrape All Now"
+msgstr ""
+
+msgctxt "#44119"
+msgid "Choose What to Scrape"
+msgstr ""
+
+msgctxt "#44120"
+msgid "Finish Without Scraping"
+msgstr ""
+
+msgctxt "#44121"
+msgid "Queued Scraping"
+msgstr ""
+
+msgctxt "#44122"
+msgid "Choose Systems to Scrape"
+msgstr ""
+
+msgctxt "#44123"
+msgid "No systems were selected for scraping."
+msgstr ""
+
+msgctxt "#44124"
+msgid "Collection: {0}\n\nCheck for ROMs whose files no longer exist?\n\nNothing will be removed without confirmation."
+msgstr ""
+
+msgctxt "#44125"
+msgid "This collection does not contain any ROMs."
+msgstr ""
+
+msgctxt "#44126"
+msgid "All queued systems have finished scraping."
+msgstr ""
+
+msgctxt "#44127"
+msgid "Scraping for {0} is complete."
+msgstr ""
+
+msgctxt "#44128"
+msgid "Scraping Complete"
+msgstr ""
+
+msgctxt "#44129"
+msgid "Overwrite Existing Metadata: {0}"
+msgstr ""
+
+msgctxt "#44130"
+msgid "Overwrite Existing Artwork: {0}"
+msgstr ""
+
+msgctxt "#44131"
+msgid "Yes"
+msgstr ""
+
+msgctxt "#44132"
+msgid "No"
+msgstr ""
+
+msgctxt "#44133"
+msgid "Save Settings"
+msgstr ""
+
+msgctxt "#44134"
+msgid "System Scrape Settings - {0}"
+msgstr ""
+
+msgctxt "#44135"
+msgid "Use these system and game scrapers for all other systems in this setup batch?"
+msgstr ""
+
+msgctxt "#44136"
+msgid "Use these system and game scrape settings for all other systems in this setup batch?"
+msgstr ""
+
+msgctxt "#44137"
+msgid "Setup Wizard"
+msgstr ""
+
+msgctxt "#44138"
+msgid "Scrape settings have been prepared for all queued systems."
+msgstr ""
+
+msgctxt "#44139"
+msgid "Scrape Preparation Complete"
+msgstr ""
+
+msgctxt "#44140"
+msgid "Optional AKL Skins"
+msgstr ""
+
+msgctxt "#44141"
+msgid "Select any optional AKL-compatible skins you would like to install."
+msgstr ""
+
+msgctxt "#44142"
+msgid "Select Active Skin"
+msgstr ""
+
+msgctxt "#44143"
+msgid "Choose which skin you would like Kodi to use."
+msgstr ""
+
+msgctxt "#44144"
+msgid "Keep Current Skin"
+msgstr ""
+
+msgctxt "#44145"
+msgid "One or more selected skins could not be installed."
+msgstr ""
+
+msgctxt "#44146"
+msgid "AKL Settings"
+msgstr ""
+
+msgctxt "#44147"
+msgid "Open the Advanced Kodi Launcher settings."
 msgstr ""

@@ -306,5 +306,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return api_commands.cmd_remove_roms(data)
         if 'store/rom/updated' in api_path:
             return api_commands.cmd_store_scraped_single_rom(data)
+        if 'store/system/updated' in api_path:
+            return api_commands.cmd_store_scraped_system(data)
         
         return

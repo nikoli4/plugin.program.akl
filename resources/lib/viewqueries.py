@@ -362,7 +362,7 @@ def qry_get_launchers():
                 'name': listitem_name,
                 'url': globals.router.url_for_path(f'/launcher/edit/{launcher.get_id()}'),
                 'is_folder': False,
-                'type': 'video',
+                'type': 'game',
                 'info': {
                     'title': listitem_name,
                     'plot': f'Launcher of type {launcher.addon.get_addon_type()}',
@@ -402,10 +402,25 @@ def qry_get_utilities_items():
     # EXECUTE_UTILS_CHECK_DATABASE -> Substituted by db constraints and migration scripts.
 
     container['items'].append({
+        'name': kodi.translate(44146),
+        'url': globals.router.url_for_path('execute/command/open_settings'),
+        'is_folder': False,
+        'type': 'game',
+        'info': {
+            'title': kodi.translate(44146),
+            'plot': kodi.translate(44147),
+            'overlay': 4
+        },
+        'art': {'icon': listitem_icon, 'fanart': listitem_fanart, 'poster': listitem_poster},
+        'properties': {
+            'obj_type': constants.OBJ_NONE
+        }
+    })
+    container['items'].append({
         'name': kodi.translate(40899),
         'url': globals.router.url_for_path('execute/command/reset_database'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40899),
             'plot': kodi.translate(44003),
@@ -420,7 +435,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40856),
         'url': globals.router.url_for_path('execute/command/render_views'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40856),
             'plot': kodi.translate(44004),
@@ -435,7 +450,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40900),
         'url': globals.router.url_for_path('execute/command/render_virtual_views'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40900),
             'plot': kodi.translate(44018),
@@ -450,7 +465,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40901),
         'url': globals.router.url_for_path('execute/command/scan_for_addons'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40901),
             'plot': kodi.translate(44019),
@@ -465,7 +480,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40902),
         'url': globals.router.url_for_path('execute/command/show_addons'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40902),
             'plot': kodi.translate(44020),
@@ -480,7 +495,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40903),
         'url': globals.router.url_for_path('execute/command/manage_rom_tags'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40903),
             'plot': kodi.translate(44021),
@@ -495,7 +510,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40904),
         'url': globals.router.url_for_path('execute/command/import_launchers'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40904),
             'plot': kodi.translate(44022),
@@ -510,7 +525,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40905),
         'url': globals.router.url_for_path('execute/command/export_to_legacy_xml'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40905),
             'plot': kodi.translate(44023),
@@ -525,7 +540,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40906),
         'url': globals.router.url_for_path('execute/command/check_collections'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40906),
             'plot': kodi.translate(44024),
@@ -540,7 +555,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40907),
         'url': globals.router.url_for_path('execute/command/check_rom_artwork_integrity'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40907),
             'plot': kodi.translate(44025),
@@ -555,7 +570,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40908),
         'url': globals.router.url_for_path('execute/command/delete_redundant_rom_artwork'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40908),
             'plot': kodi.translate(44026),
@@ -570,7 +585,7 @@ def qry_get_utilities_items():
         'name': kodi.translate(40909),
         'url': globals.router.url_for_path('execute/command/EXECUTE_UTILS_SHOW_DETECTED_DATS'),
         'is_folder': False,
-        'type': 'video',
+        'type': 'game',
         'info': {
             'title': kodi.translate(40909),
             'plot': kodi.translate(44027),
@@ -715,9 +730,6 @@ def qry_container_context_menu_items(container_data) -> typing.List[typing.Tuple
         commands.append((kodi.translate(40923), _context_menu_url_for('execute/command/render_vcategory_view', {
                         'vcategory_id': container_parentid,
                         'name': container_name})))
-    
-    commands.append((kodi.translate(40895), 'ActivateWindow(filemanager)'))
-    commands.append((kodi.translate(40896), 'Addon.OpenSettings({0})'.format(globals.addon_id)))
 
     return commands
 
@@ -764,20 +776,19 @@ def qry_listitem_context_menu_items(list_item_data, container_data) -> typing.Li
         commands.append((kodi.translate(40922), _context_menu_url_for('/execute/command/execute_all_rulesets', {
             'romcollection_id': item_id
         })))
-    
     if is_source:
         if item_id and len(item_id) > 0:
             commands.append((kodi.translate(40915), _context_menu_url_for(f'/source/edit/{item_id}')))
-        commands.append((kodi.translate(42046), _context_menu_url_for('/execute/command/scan_roms', {
-            'source_id': item_id
-        })))
+            commands.append((kodi.translate(42046), _context_menu_url_for('/execute/command/scan_roms', {
+                'source_id': item_id
+            })))
         
     if is_launcher:
         if item_id and len(item_id) > 0:
             commands.append((kodi.translate(40918), _context_menu_url_for(f'/launcher/edit/{item_id}')))
             commands.append((kodi.translate(40919), _context_menu_url_for(f'/launcher/delete/{item_id}')))
         
-    if not is_category and container_is_category:
+    if not is_category and container_is_category and container_id:
         commands.append((kodi.translate(40888), _context_menu_url_for(f'/add/{container_id}')))
         
     if is_virtual_category:

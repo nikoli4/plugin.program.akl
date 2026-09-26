@@ -3,7 +3,7 @@
 # Advanced Kodi Launcher miscellaneous set of objects
 #
 # Copyright (c) Chrisism <crizizz@gmail.com>
-# Portions (c) Wintermute0110 <wintermute0110@gmail.com> 
+# Portions (c) Wintermute0110 <wintermute0110@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -92,7 +92,7 @@ class EntityABC(object):
 
     def __init__(self, entity_data: typing.Dict[str, typing.Any]):
         self.entity_data = entity_data
-        
+
         if "extra" not in self.entity_data or not self.entity_data["extra"]:
             self.entity_data["extra"] = {}
         elif isinstance(self.entity_data["extra"], str):
@@ -146,7 +146,7 @@ class EntityABC(object):
         if field not in self.entity_data:
             return None
         return self._to_filename(self.entity_data[field], isdir=True)
-    
+
     #  helper method to convert a value to filename
     def _to_filename(self, value, isdir=False) -> io.FileName:
         if not value or value == '':
@@ -156,25 +156,25 @@ class EntityABC(object):
 
 # Addons that can be used as AKL plugin (launchers, scrapers)
 class AklAddon(EntityABC):
-    
+
     def __init__(self, addon_dic=None):
         if addon_dic is None:
             addon_dic = {}
-            
+
         if 'associated_addon_id' in addon_dic:
             addon_dic['id'] = addon_dic['associated_addon_id']
-            
+
         if 'addon_name' in addon_dic:
             addon_dic['name'] = addon_dic['addon_name']
-            
+
         if 'id' not in addon_dic:
             addon_dic['id'] = text.misc_generate_random_SID()
-            
+
         super(AklAddon, self).__init__(addon_dic)
-    
+
     def get_id(self) -> str:
-        return self.entity_data['id'] 
-    
+        return self.entity_data['id']
+
     def get_name(self) -> str:
         return self.entity_data['name']
 
@@ -183,25 +183,25 @@ class AklAddon(EntityABC):
 
     def get_addon_id(self) -> str:
         return self.entity_data['addon_id']
-    
+
     def get_version(self) -> str:
         return self.entity_data['version']
-    
+
     def set_version(self, version: str):
         self.entity_data['version'] = version
-    
+
     def get_addon_type(self) -> constants.AddonType:
         return constants.AddonType[self.entity_data['addon_type']] if 'addon_type' in self.entity_data else constants.AddonType.UNKNOWN
- 
+
     def get_extra_settings_str(self) -> str:
         return self.entity_data['extra_settings'] if 'extra_settings' in self.entity_data else ''
-    
+
     def get_extra_settings(self) -> dict:
         return json.loads(self.get_extra_settings_str())
-    
+
     def set_extra_settings(self, settings: dict):
         self.entity_data['extra_settings'] = json.dumps(settings)
-        
+
 
 class Asset(EntityABC):
 
@@ -209,46 +209,46 @@ class Asset(EntityABC):
         self.asset_info: AssetInfo = None
         if entity_data is None:
             entity_data = _get_default_asset_data_model()
-        
+
         if 'asset_type' in entity_data and entity_data['asset_type']:
             self.asset_info = g_assetFactory.get_asset_info(entity_data['asset_type'])
-        
+
         super(Asset, self).__init__(entity_data)
-    
+
     def get_asset_info_id(self) -> str:
-        return self.asset_info.id 
-    
+        return self.asset_info.id
+
     def get_asset_info(self) -> AssetInfo:
         return self.asset_info
-    
+
     def get_path(self) -> str:
         return self.entity_data['filepath']
-    
+
     def get_path_FN(self) -> io.FileName:
         return self._get_filename_from_field('filepath')
-    
+
     def set_path(self, path_str):
         self.entity_data['filepath'] = path_str
-    
+
     def set_asset_info(self, info: AssetInfo):
         self.asset_info = info
-    
+
     def is_assigned(self) -> bool:
         return self.get_path() != ''
 
     def clear(self):
         self.entity_data['filepath'] = ''
-      
+
     @staticmethod
     def create(asset_info_id):
         asset = Asset()
         asset_info = g_assetFactory.get_asset_info(asset_info_id)
         asset.set_asset_info(asset_info)
         return asset
-        
+
 
 class AssetPath(EntityABC):
-        
+
     def __init__(self, entity_data: typing.Dict[str, typing.Any] = None):
         self.asset_info: AssetInfo = None
         if entity_data is None:
@@ -260,36 +260,36 @@ class AssetPath(EntityABC):
 
         if 'asset_type' in entity_data and entity_data['asset_type']:
             self.asset_info = g_assetFactory.get_asset_info(entity_data['asset_type'])
-        
+
         super(AssetPath, self).__init__(entity_data)
-    
+
     def get_asset_info_id(self) -> str:
         return self.asset_info.id
-    
+
     def get_asset_info(self) -> AssetInfo:
         return self.asset_info
-    
+
     def get_path(self) -> str:
         return self.entity_data['path']
-    
+
     def get_path_FN(self) -> io.FileName:
         return self._get_filename_from_field('path')
-    
+
     def set_path(self, path_str: str):
         self.entity_data['path'] = path_str
-    
+
     def set_path_FN(self, path: io.FileName):
         self.entity_data['path'] = path.getPath()
-    
+
     def set_asset_info(self, info: AssetInfo):
         self.asset_info = info
-    
+
     def clear(self):
         self.entity_data['path'] = None
-         
+
 
 class AssetMapping(EntityABC):
-        
+
     def __init__(self, entity_data: typing.Dict[str, typing.Any] = None):
         self.asset_info: AssetInfo = None
         self.to_asset_info: AssetInfo = None
@@ -300,30 +300,30 @@ class AssetMapping(EntityABC):
                 'mapped_asset_type': '',
                 'to_asset_type': ''
             }
-        
+
         if 'mapped_asset_type' in entity_data and entity_data['mapped_asset_type']:
             self.asset_info = g_assetFactory.get_asset_info(entity_data['mapped_asset_type'])
         if 'to_asset_type' in entity_data and entity_data['to_asset_type']:
             self.to_asset_info = g_assetFactory.get_asset_info(entity_data['to_asset_type'])
-        
+
         super(AssetMapping, self).__init__(entity_data)
-    
+
     def get_asset_info_id(self) -> str:
         return self.asset_info.id
-    
+
     def get_asset_info(self) -> AssetInfo:
         return self.asset_info
-    
+
     def get_mapped_to_asset_info(self) -> str:
         return self.to_asset_info
-    
+
     def set_mapping(self, info: AssetInfo, to: AssetInfo):
         self.asset_info = info
         self.to_asset_info = to
-    
+
     def clear(self):
         self.to_asset_info = None
-         
+
     def is_mapped(self):
         if self.to_asset_info is None:
             return False
@@ -333,18 +333,18 @@ class AssetMapping(EntityABC):
 
 
 class RomAssetMapping(AssetMapping):
-      
+
     def is_mapped(self):
         if self.to_asset_info is None:
             return False
-        
+
         if self.asset_info.id == constants.ASSET_ICON_ID or self.asset_info.id == constants.ASSET_POSTER_ID:
             if self.asset_info.id == constants.ASSET_ICON_ID and self.to_asset_info.id == constants.ASSET_BOXFRONT_ID:
                 return False
             if self.asset_info.id == constants.ASSET_POSTER_ID and self.to_asset_info.id == constants.ASSET_FLYER_ID:
                 return False
             return True
-        
+
         if self.to_asset_info.id == self.asset_info.id:
             return False
         return True
@@ -352,50 +352,50 @@ class RomAssetMapping(AssetMapping):
 
 class ROMAddon(EntityABC):
     __metaclass__ = abc.ABCMeta
-    
+
     def __init__(self, addon: AklAddon, entity_data: dict):
         self.addon = addon
         super(ROMAddon, self).__init__(entity_data)
-            
+
     def get_addon_name(self):
         return self.addon.get_name()
-    
+
     def get_settings_str(self) -> str:
         return self.entity_data['settings'] if 'settings' in self.entity_data else None
-    
+
     def get_settings(self) -> dict:
         settings = self.get_settings_str()
         if settings is None:
             return {}
         return json.loads(settings)
-    
+
     def get_setting(self, setting_key: str, default_value=None):
         settings = self.get_settings()
         return settings[setting_key] if setting_key in settings else default_value
-    
+
     def set_settings_str(self, addon_settings: str):
         self.entity_data['settings'] = addon_settings
         new_name = self.get_setting('name')
         if new_name:
             self.entity_data['name'] = new_name
-    
+
     def set_settings(self, addon_settings: dict):
         self.entity_data['settings'] = json.dumps(addon_settings)
         new_name = self.get_setting('name')
         if new_name:
             self.entity_data['name'] = new_name
-    
+
     def get_addon(self) -> AklAddon:
         return self.addon
 
 
 class ROMLauncherAddon(ROMAddon):
     __metaclass__ = abc.ABCMeta
-      
+
     def __init__(self,
                  entity_data: dict = None,
                  addon: AklAddon = None):
-        
+
         if entity_data is None:
             entity_data = {
                 'id': text.misc_generate_random_SID(),
@@ -403,16 +403,16 @@ class ROMLauncherAddon(ROMAddon):
                 'is_default': False
             }
         super(ROMLauncherAddon, self).__init__(addon, entity_data)
-        
+
     def get_name(self):
         if not self.entity_data['name']:
             return super().get_addon_name()
-        
+
         return self.entity_data["name"]
-        
+
     def is_default(self) -> bool:
         return self.entity_data['is_default'] if 'is_default' in self.entity_data else False
-    
+
     def set_default(self, default_launcher=False):
         self.entity_data['is_default'] = default_launcher
 
@@ -422,9 +422,9 @@ class ROMLauncherAddon(ROMAddon):
             settings.getSettingAsInt('webserver_port'),
             self.get_id(),
             constants.OBJ_ROM,
-            rom.get_id()    
+            rom.get_id()
         )
-        
+
     def launch(self, rom: ROM):
         kodi.run_script(
             self.addon.get_addon_id(),
@@ -438,12 +438,12 @@ class ROMLauncherAddon(ROMAddon):
                 settings.getSettingAsInt('webserver_port'),
                 self.get_id(),
                 args['entity_type'] if 'entity_type' in args else '',
-                args['entity_id'] if 'entity_id' in args else ''
+                args['entity_id'] if 'entity_id' in args else '',
+                args['system_name'] if 'system_name' in args else None
             ))
 
-
 class RetroplayerLauncherAddon(ROMLauncherAddon):
-    
+
     def get_launch_command(self, rom: ROM) -> dict:
         return None
 
@@ -456,7 +456,7 @@ class RetroplayerLauncherAddon(ROMLauncherAddon):
             logger.warning(f'Cannot launch ROM {rom.get_rom_identifier()}. No path provided.')
             kodi.notify_warn(kodi.translate(40957))
             return
-            
+
         # >> How to fill gameclient = string (game.libretro.fceumm) ???
         game_info = {
             'title': rom.get_name(),
@@ -472,7 +472,7 @@ class RetroplayerLauncherAddon(ROMLauncherAddon):
         logger.debug('Executing Retroplayer')
         kodi.play_item(rom.get_name(), rom_file_path.getPath(), 'game', game_info)
         logger.debug('Retroyplayer call finished')
-   
+
     def configure(self, args: dict):
         post_data = {
             'akl_addon_id': self.get_id(),
@@ -489,19 +489,19 @@ class RetroplayerLauncherAddon(ROMLauncherAddon):
 
 
 class Source(ROMAddon):
-    
+
     def __init__(self,
                  entity_data: dict = None,
                  addon: AklAddon = None,
                  asset_paths_data: typing.List[AssetPath] = [],
                  launchers_data: typing.List[ROMLauncherAddon] = []):
-        
+
         self.asset_paths: typing.Dict[str, AssetPath] = {}
         self.launchers_data = launchers_data
         if asset_paths_data is not None:
             for path in asset_paths_data:
                 self.asset_paths[path.get_asset_info_id()] = path
-        
+
         if entity_data is None:
             entity_data = {
                 'id': text.misc_generate_random_SID(),
@@ -514,15 +514,15 @@ class Source(ROMAddon):
                 'settings': '{}'
             }
         super(Source, self).__init__(addon, entity_data)
-    
+
     def get_name(self):
         if not self.entity_data['name']:
             return super().get_addon_name()
         return self.entity_data["name"]
-    
+
     def set_name(self, name):
         self.entity_data["name"] = name
-    
+
     def get_type(self):
         return constants.OBJ_SOURCE  # 42506
 
@@ -534,7 +534,7 @@ class Source(ROMAddon):
 
     def get_box_sizing(self):
         return self.entity_data['box_size'] if 'box_size' in self.entity_data else constants.BOX_SIZE_POSTER
-    
+
     def set_box_sizing(self, box_size):
         self.entity_data['box_size'] = box_size
 
@@ -543,41 +543,41 @@ class Source(ROMAddon):
 
     def has_roms(self) -> bool:
         return self.num_roms() > 0
-        
+
     def get_last_change_timestamp(self) -> datetime:
         if 'last_change_on' not in self.entity_data or not self.entity_data['last_change_on']:
             return datetime.datetime.today()
-        
+
         return datetime.datetime.fromisoformat(self.entity_data['last_change_on'])
-    
+
     def get_assets_root_path(self) -> io.FileName:
         return self._get_directory_filename_from_field('assets_path')
-    
+
     def get_asset_path(self, asset_info: AssetInfo, fallback_to_root=True) -> io.FileName:
         if not asset_info:
             return None
         if asset_info.id in self.asset_paths:
             return self.asset_paths[asset_info.id].get_path_FN()
-        
+
         if fallback_to_root and self.get_assets_root_path() is not None:
             return self.get_assets_root_path().pjoin(asset_info.plural.lower(), isdir=True)
         return None
-        
+
     def get_asset_paths(self) -> typing.List[AssetPath]:
         return list(self.asset_paths.values())
-    
+
     def set_asset_path(self, asset_info: AssetInfo, path: str):
         logger.debug(f'Setting "{asset_info.id}" to {path}')
         asset_path = self.asset_paths[asset_info.id] if asset_info.id in self.asset_paths else AssetPath()
         asset_path.set_path(path)
         asset_path.set_asset_info(asset_info)
-        
+
         self.asset_paths[asset_info.id] = asset_path
-        
+
     def set_assets_root_path(self, path: io.FileName, asset_ids=[], create_default_subdirectories=False):
         path_str = path.getPath() if path else ''
         self.entity_data['assets_path'] = path_str
-        
+
         if create_default_subdirectories:
             asset_ids = constants.ROM_ASSET_ID_LIST if not asset_ids else asset_ids
             for asset_info_id in asset_ids:
@@ -603,7 +603,7 @@ class Source(ROMAddon):
                 if A_i.path_key not in self.entity_data or A_j.path_key not in self.entity_data \
                    or not self.entity_data[A_i.path_key] or not self.entity_data[A_j.path_key]:
                     continue
-                
+
                 # logger.debug('asset_get_duplicated_asset_list() Checking {0:<9} vs {1:<9}'.format(A_i.name, A_j.name))
                 if self.entity_data[A_i.path_key] == self.entity_data[A_j.path_key]:
                     duplicated_bool_list[i] = True
@@ -620,10 +620,10 @@ class Source(ROMAddon):
             current_default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
             if current_default_launcher:
                 current_default_launcher.set_default(False)
-            
+
         self.launchers_data.append(launcher)
         logger.debug(f'Adding launcher "{launcher.get_id()}" to Source "{self.get_name()}"')
-        
+
     def get_launchers(self) -> typing.List[ROMLauncherAddon]:
         return self.launchers_data
 
@@ -636,24 +636,24 @@ class Source(ROMAddon):
         default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
         if default_launcher is None:
             return self.launchers_data[0]
-        
+
         return default_launcher
 
     def set_launcher_as_default(self, launcher_id):
         if len(self.launchers_data) == 0:
             return
-        
+
         current_default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
         if current_default_launcher:
             current_default_launcher.set_default(False)
-        
+
         launcher_to_be_default = next((ld for ld in self.launchers_data if ld.get_id() == launcher_id), None)
         if launcher_to_be_default:
             launcher_to_be_default.set_default(True)
-                
+
     def get_last_scan_timestamp(self):
         return self.entity_data["last_scan_timestamp"]
-    
+
     def get_scan_command(self) -> dict:
         return addons.create_scan_command(
             globals.WEBSERVER_HOST,
@@ -662,30 +662,31 @@ class Source(ROMAddon):
             constants.OBJ_SOURCE,
             self.get_id()
         )
-        
+
     def get_configure_command(self) -> dict:
         return addons.create_configure_scan_command(
             globals.WEBSERVER_HOST,
             settings.getSettingAsInt('webserver_port'),
             self.get_id(),
             constants.OBJ_SOURCE,
-            self.get_id()
+            self.get_id(),
+            self.get_platform()
         )
 
 
 class ScraperAddon(ROMAddon):
-    
+
     def __init__(self, addon: AklAddon, scraper_settings: ScraperSettings):
         entity_data = {
             'settings': json.dumps(scraper_settings.get_data_dic())
         }
         super(ScraperAddon, self).__init__(addon, entity_data)
-    
+
     def get_name(self):
         if 'name' not in self.entity_data or not self.entity_data['name']:
             return super().get_addon_name()
         return self.entity_data["name"]
-    
+
     def settings_are_applicable(self) -> bool:
         settings = self.get_scraper_settings()
 
@@ -701,7 +702,7 @@ class ScraperAddon(ROMAddon):
             asset_overlap = list(set(supported_asset_types) & set(settings.asset_IDs_to_scrape))
             if len(asset_overlap) > 0:
                 return True
-        
+
         return False
 
     def is_metadata_supported(self, metadata_id) -> bool:
@@ -729,10 +730,10 @@ class ScraperAddon(ROMAddon):
     def get_scraper_settings(self) -> ScraperSettings:
         settings_dict = self.get_settings()
         return ScraperSettings.from_settings_dict(settings_dict)
-        
+
     def set_scraper_settings(self, settings: ScraperSettings):
         self.entity_data['settings'] = json.dumps(settings.get_data_dic())
-           
+
     def scrape(self, entity: EntityABC):
         kodi.run_script(
             self.addon.get_addon_id(),
@@ -744,6 +745,29 @@ class ScraperAddon(ROMAddon):
                 entity.get_id(),
                 self.get_settings()
             ))
+
+
+    def scrape_system(
+            self,
+            entity: EntityABC,
+            platform: str,
+            system_name: str,
+            asset_paths: dict):
+
+        kodi.run_script(
+            self.addon.get_addon_id(),
+            addons.create_system_scraper_command(
+                globals.WEBSERVER_HOST,
+                settings.getSettingAsInt('webserver_port'),
+                self.addon.get_id(),
+                entity.get_type(),
+                entity.get_id(),
+                self.get_settings(),
+                platform,
+                system_name,
+                asset_paths
+            )
+        )
 
 
 class RuleSetOperator(IntEnum):
@@ -758,12 +782,12 @@ class RuleOperator(IntEnum):
     DoesNotContain = 4
     MoreThan = 5
     LessThan = 6
-    
+
 
 class Rule(EntityABC):
-    
+
     def __init__(self, entity_data: typing.Dict[str, typing.Any] = None):
-        
+
         if entity_data is None:
             entity_data = {
                 'rule_id': '',
@@ -774,7 +798,7 @@ class Rule(EntityABC):
             }
 
         super(Rule, self).__init__(entity_data)
-            
+
     def get_id(self):
         return self.entity_data['rule_id'] if 'rule_id' in self.entity_data else None
 
@@ -783,7 +807,7 @@ class Rule(EntityABC):
 
     def get_operator(self):
         return RuleOperator(self.entity_data['operator']) if 'operator' in self.entity_data else RuleOperator.Equals
-    
+
     def get_operator_str(self):
         opr = self.get_operator()
         if opr == RuleOperator.Equals:
@@ -799,69 +823,69 @@ class Rule(EntityABC):
         if opr == RuleOperator.LessThan:
             return kodi.translate(30923)
         return kodi.translate(30918)
-    
+
     def get_property(self):
         return self.entity_data['property'] if 'property' in self.entity_data else ''
-    
+
     def get_value(self):
         return self.entity_data['value'] if 'value' in self.entity_data else ''
-    
+
     def get_description(self):
         fields = ROM.get_fields_with_translations()
         property = self.get_property()
         if property:
             property = kodi.translate(fields[self.get_property()])
         return f"{property} {self.get_operator_str()} {self.get_value()}"
-    
+
     def set_ruleset(self, ruleset_id):
         self.entity_data['ruleset_id'] = ruleset_id
-    
+
     def applies_to(self, rom: ROM):
         operator = self.get_operator()
         entity_property = self.get_property()
         property_value = self.get_value()
         actual = rom.get_custom_attribute(entity_property)
-        
+
         if actual is not None:
             property_value = type(actual)(property_value)
-            
+
         logger.debug((f'[Rule] operator: {operator}, property: {entity_property}, '
                       f'value: {property_value} ({type(property_value)}), '
                       f'actual value: {actual} ({type(actual)})'))
-        
+
         if operator == RuleOperator.Equals:
             if isinstance(actual, str):
                 return actual.casefold() == property_value.casefold()
             return actual == property_value
-        
+
         if operator == RuleOperator.NotEquals:
             if isinstance(actual, str):
                 return actual.casefold() != property_value.casefold()
             return actual != property_value
-        
+
         if operator == RuleOperator.Contains:
             if isinstance(actual, str):
                 return property_value.casefold() in actual.casefold()
             return property_value in actual
-        
+
         if operator == RuleOperator.DoesNotContain:
             if isinstance(actual, str):
                 return property_value.casefold() not in actual.casefold()
             return property_value not in actual
-        
+
         if operator == RuleOperator.MoreThan:
             return property_value > actual
-        
+
         if operator == RuleOperator.LessThan:
             return property_value < actual
-        
+
         return False
 
 
 class RuleSet(object):
-    
+
     def __init__(self, entity_data: typing.Dict[str, typing.Any] = None):
-        
+
         if entity_data is None:
             entity_data = {
                 'ruleset_id': text.misc_generate_random_SID(),
@@ -871,87 +895,87 @@ class RuleSet(object):
                 'set_operator': None,
                 'rules': []
             }
-            
+
         self.entity_data = entity_data
         self.rules = []
-        
+
         if 'rules' in self.entity_data:
             for rule_data in self.entity_data['rules']:
                 if 'ruleset_id' not in rule_data or not rule_data['ruleset_id']:
                     rule_data['ruleset_id'] = self.entity_data['ruleset_id']
                 if rule_data['rule_id']:
                     self.rules.append(Rule(rule_data))
-         
+
     def get_ruleset_id(self):
         return self.entity_data['ruleset_id'] if 'ruleset_id' in self.entity_data else None
-         
+
     def get_source_id(self):
         return self.entity_data['source_id'] if 'source_id' in self.entity_data else None
-    
+
     def get_source_name(self):
         if 'source_name' not in self.entity_data or self.entity_data['source_name'] is None:
             return kodi.translate(42508)
         return self.entity_data['source_name']
-    
+
     def get_rules_description(self):
         if len(self.rules) == 0:
             return kodi.translate(42508)  # All
-                
+
         return f"{len(self.rules)} {kodi.translate(42510)} [{self.get_set_operator_str()}]"
-        
+
     def get_rules_shortdescription(self):
         if len(self.rules) == 0:
             return kodi.translate(42508)  # All
         return kodi.translate(42510)  # Rules
-        
+
     def get_set_operator(self):
         operator = self.entity_data['set_operator'] if 'set_operator' in self.entity_data else RuleSetOperator.OR
         return operator if operator else RuleSetOperator.OR
-           
+
     def get_set_operator_str(self):
         set_operator = self.get_set_operator()
         return kodi.translate(30916) if set_operator == RuleSetOperator.AND else kodi.translate(30917)
-    
+
     def get_rules(self) -> typing.List[Rule]:
         return self.rules
-    
+
     def get_rule(self, rule_id: str) -> Rule:
         return next((rule for rule in self.rules if rule.get_id() == rule_id), None)
-    
+
     def add_rule(self, rule: Rule):
         self.rules.append(rule)
-    
+
     def apply_source(self, source: Source):
         if source is None:
             self.entity_data['source_id'] = None
             self.entity_data['source_name'] = None
             return
-        
+
         self.entity_data['source_id'] = source.get_id()
         self.entity_data['source_name'] = source.get_name()
-    
+
     def change_operator(self):
         current = self.get_set_operator()
         if current == RuleSetOperator.OR:
             self.entity_data['set_operator'] = RuleSetOperator.AND
         else:
             self.entity_data['set_operator'] = RuleSetOperator.OR
-    
+
     def clear_rules(self):
         self.rules.clear()
-        
+
     def has_rules(self):
         return len(self.rules) > 0
-        
+
     def applies_to(self, rom: ROM):
         # no rules, then all applied
         if len(self.rules) == 0:
             return True
-        
+
         set_operator = self.get_set_operator()
         if not set_operator:
             set_operator = RuleSetOperator.OR
-        
+
         for rule in self.rules:
             if rule.applies_to(rom):
                 if set_operator == RuleSetOperator.OR:
@@ -959,7 +983,7 @@ class RuleSet(object):
             else:
                 if set_operator == RuleSetOperator.AND:
                     return False
-                
+
         return set_operator == RuleSetOperator.AND
 
 
@@ -979,19 +1003,19 @@ class MetaDataItemABC(EntityABC):
         if assets is not None:
             for asset in assets:
                 self.assets[asset.get_asset_info_id()] = asset
-        
+
         self.asset_paths: typing.Dict[str, AssetPath] = {}
         if asset_paths_data is not None:
             for path in asset_paths_data:
                 self.asset_paths[path.get_asset_info_id()] = path
-        
+
         self.asset_mappings = asset_mappings
         super(MetaDataItemABC, self).__init__(entity_data)
 
     # --------------------------------------------------------------------------------------------
     # Core functions
     # --------------------------------------------------------------------------------------------
-    
+
     # --- Metadata --------------------------------------------------------------------------------
     def get_metadata_id(self):
         return self.entity_data['metadata_id']
@@ -1061,10 +1085,10 @@ class MetaDataItemABC(EntityABC):
                 video_id = matches.groups()[-1]
                 trailer_str = 'plugin://plugin.video.youtube/play/?video_id={}'.format(video_id)
 
-        trailer_asset = self.get_asset(constants.ASSET_TRAILER_ID) 
+        trailer_asset = self.get_asset(constants.ASSET_TRAILER_ID)
         if trailer_asset is None:
             self.assets[constants.ASSET_TRAILER_ID] = Asset.create(constants.ASSET_TRAILER_ID)
-                        
+
         self.assets[constants.ASSET_TRAILER_ID].set_path(trailer_str)
 
     # --- Finished status stuff -------------------------------------------------------------------
@@ -1092,10 +1116,10 @@ class MetaDataItemABC(EntityABC):
 
     def get_asset(self, asset_id: str) -> Asset:
         return self.assets[asset_id] if asset_id in self.assets else None
-    
+
     def get_assets(self) -> typing.List[Asset]:
         return list(self.assets.values())
- 
+
     #
     # Returns a collection with the object assets, ready to be edited.
     # Values are the current assets and a path value of '' if the asset is not set.
@@ -1108,11 +1132,11 @@ class MetaDataItemABC(EntityABC):
             if asset is None:
                 asset = Asset()
                 asset.set_asset_info(asset_info)
-                
+
             available_assets.append(asset)
 
         return available_assets
-                
+
     #
     # Gets the asset path (str) of the given assetinfo type.
     #
@@ -1121,34 +1145,34 @@ class MetaDataItemABC(EntityABC):
             return None
         if asset_info is not None:
             asset_id = asset_info.id
-        
+
         asset = self.get_asset(asset_id)
         if asset is not None:
             path = asset.get_path()
             if path != '':
                 return path
-            
+
         return fallback
-            
+
     def get_asset_FN(self, asset_info: AssetInfo) -> io.FileName:
         if asset_info is None:
             return None
-        
+
         asset = self.get_asset(asset_info.id)
         if asset is None:
             return None
-        
+
         return asset.get_path_FN()
-        
+
     def set_asset(self, asset_info: AssetInfo, path_FN: io.FileName):
         path = path_FN.getPath() if path_FN else ''
-        
+
         asset = self.get_asset(asset_info.id)
         if asset is None:
             self.assets[asset_info.id] = Asset.create(asset_info.id)
-                        
+
         self.assets[asset_info.id].set_path(path)
-        
+
     def clear_asset(self, asset_info: AssetInfo):
         asset = self.get_asset(asset_info.id)
         if asset is None:
@@ -1168,35 +1192,35 @@ class MetaDataItemABC(EntityABC):
         asset_path = self.asset_paths[asset_info.id] if asset_info.id in self.asset_paths else AssetPath()
         asset_path.set_path(path)
         asset_path.set_asset_info(asset_info)
-        
+
         self.asset_paths[asset_info.id] = asset_path
-    
+
     def update_missing_asset_paths(self, asset_paths: typing.List[AssetPath]):
         for asset_path in asset_paths:
             if asset_path.get_asset_info_id() not in self.asset_paths:
                 self.set_asset_path(asset_path.get_asset_info(), asset_path.get_path())
-                  
+
     @abc.abstractmethod
     def get_asset_ids_list(self) -> typing.List[str]:
         pass
-    
+
     @abc.abstractmethod
     def get_mappable_asset_ids_list(self) -> typing.List[str]:
         return []
-    
+
     @abc.abstractmethod
     def get_default_icon(self) -> str:
         pass
-    
+
     def is_mappable_asset(self, asset_info) -> bool:
         return asset_info.id in self.get_mappable_asset_ids_list()
-    
+
     # returns the complete set of assets as they are mapped for the view
     def get_view_assets(self) -> typing.Dict[str, str]:
         asset_ids = self.get_asset_ids_list()
         mappable_asset_ids = self.get_mappable_asset_ids_list()
         view_asset_ids = asset_ids + list(set(mappable_asset_ids) - set(asset_ids))
-        
+
         view_assets = {}
         for asset_id in view_asset_ids:
             asset_info = g_assetFactory.get_asset_info(asset_id)
@@ -1205,20 +1229,20 @@ class MetaDataItemABC(EntityABC):
             fallback_str = ''
             if asset_info.id == constants.ASSET_ICON_ID:
                 fallback_str = self.get_default_icon()
-                
+
             if self.is_mappable_asset(asset_info):
                 applied_asset_info = self.get_asset_mapping(asset_info)
 
             if applied_asset_info.id in self.assets:
                 asset = self.assets[applied_asset_info.id]
                 value = asset.get_path()
-            
+
             if value == '':
                 value = fallback_str
 
             view_assets[asset_info.fname_infix] = value
         return view_assets
-    
+
     #
     # Get a list of the assets that can be mapped to a defaultable asset.
     # They must be images, no videos, no documents.
@@ -1245,7 +1269,7 @@ class MetaDataItemABC(EntityABC):
             self.asset_mappings.append(mapped_asset)
 
         mapped_asset.set_mapping(asset_info, mapped_to_info)
-        
+
     def __str__(self):
         return '{}#{}: {}'.format(self.get_object_name(), self.get_id(), self.get_name())
 
@@ -1256,9 +1280,9 @@ class MetaDataItemABC(EntityABC):
 # -------------------------------------------------------------------------------------------------
 class Category(MetaDataItemABC):
     __metaclass__ = abc.ABCMeta
-    
+
     def __init__(self,
-                 category_dic: typing.Dict[str, typing.Any] = None, 
+                 category_dic: typing.Dict[str, typing.Any] = None,
                  assets: typing.List[Asset] = None,
                  asset_mappings: typing.List[AssetMapping] = []):
         # Concrete classes are responsible of creating a default entity_data dictionary
@@ -1273,11 +1297,11 @@ class Category(MetaDataItemABC):
 
     def get_type(self):
         return constants.OBJ_CATEGORY  # 42501
-    
+
     # parent category / romcollection this item belongs to.
     def get_parent_id(self) -> str:
         return self.entity_data['parent_id'] if 'parent_id' in self.entity_data else None
-    
+
     def num_romcollections(self) -> int:
         return self.entity_data['num_romcollections'] if 'num_romcollections' in self.entity_data else 0
 
@@ -1290,24 +1314,24 @@ class Category(MetaDataItemABC):
     def get_last_change_timestamp(self) -> datetime:
         if 'last_change_on' not in self.entity_data or not self.entity_data['last_change_on']:
             return datetime.datetime.today()
-        
+
         return datetime.datetime.fromisoformat(self.entity_data['last_change_on'])
 
     def get_asset_ids_list(self):
         return constants.CATEGORY_ASSET_ID_LIST
-    
+
     def get_mappable_asset_ids_list(self):
         return constants.MAPPABLE_CATEGORY_ASSET_ID_LIST
-    
+
     def get_default_icon(self) -> str:
-        return 'DefaultFolder.png' 
-    
+        return 'DefaultFolder.png'
+
     def get_NFO_name(self) -> io.FileName:
         nfo_dir = io.FileName(settings.getSetting('categories_asset_dir'), isdir=True)
         nfo_file_path = nfo_dir.pjoin(self.get_name() + '.nfo')
         logger.debug("Category.get_NFO_name() nfo_file_path = '{0}'".format(nfo_file_path.getPath()))
         return nfo_file_path
-    
+
     # ---------------------------------------------------------------------------------------------
     # NFO files for metadata
     # ---------------------------------------------------------------------------------------------
@@ -1361,7 +1385,7 @@ class Category(MetaDataItemABC):
         logger.debug("Category.import_NFO_file() Imported '{0}'".format(nfo_FileName.getPath()))
 
         return True
-    
+
     def export_to_NFO_file(self, nfo_FileName: io.FileName):
         # --- Get NFO file name ---
         logger.debug('Category.export_to_NFO_file() Exporting launcher NFO "{0}"'.format(nfo_FileName.getPath()))
@@ -1376,11 +1400,11 @@ class Category(MetaDataItemABC):
         nfo_content.append(text.XML_line('developer', self.get_developer()))
         nfo_content.append(text.XML_line('rating', self.get_rating()))
         nfo_content.append(text.XML_line('plot', self.get_plot()))
-        
+
         nfo_content.append('</category>\n')
         full_string = ''.join(nfo_content)
         nfo_FileName.writeAll(full_string)
-            
+
     def export_to_file(self, file: io.FileName):
         logger.debug('Category.export_to_file() Category "{0}" (ID "{1}")'.format(self.get_name(), self.get_id()))
 
@@ -1405,29 +1429,29 @@ class Category(MetaDataItemABC):
         str_list.append(text.XML_line('s_clearlogo', self.get_asset_str(asset_id=constants.ASSET_CLEARLOGO_ID)))
         str_list.append('</category>\n')
         str_list.append('</advanced_emulator_launcher_configuration>\n')
-        
+
         full_string = ''.join(str_list)
         file.writeAll(full_string)
-        
+
     def __str__(self):
         return super().__str__()
-    
+
 
 class VirtualCategory(Category):
-    
+
     def get_object_name(self):
         return "Virtual Category"
-    
+
     def get_type(self):
         return constants.OBJ_CATEGORY_VIRTUAL  # 42502
- 
+
 
 # -------------------------------------------------------------------------------------------------
 # Class representing a collection of ROMs.
 # -------------------------------------------------------------------------------------------------
 class ROMCollection(MetaDataItemABC):
     __metaclass__ = abc.ABCMeta
-    
+
     def __init__(self,
                  entity_data: dict = None,
                  assets_data: typing.List[Asset] = None,
@@ -1440,7 +1464,7 @@ class ROMCollection(MetaDataItemABC):
         if entity_data is None:
             entity_data = _get_default_ROMCollection_data_model()
             entity_data['id'] = text.misc_generate_random_SID()
-            
+
         self.launchers_data = launchers_data
         self.scanners_data = source_data
 
@@ -1452,7 +1476,7 @@ class ROMCollection(MetaDataItemABC):
                 mapping = RomAssetMapping()
                 mapping.asset_info = asset_info
                 self.rom_asset_mappings.append(mapping)
-           
+
         super(ROMCollection, self).__init__(entity_data, assets_data, None, asset_mappings)
 
     def get_object_name(self):
@@ -1460,11 +1484,11 @@ class ROMCollection(MetaDataItemABC):
 
     def get_type(self):
         return constants.OBJ_ROMCOLLECTION
-    
+
     # parent category / romcollection this item belongs to.
     def get_parent_id(self) -> str:
         return self.entity_data['parent_id'] if 'parent_id' in self.entity_data else None
-        
+
     def get_platform(self):
         return self.entity_data['platform'] if 'platform' in self.entity_data else None
 
@@ -1473,16 +1497,16 @@ class ROMCollection(MetaDataItemABC):
 
     def get_box_sizing(self):
         return self.entity_data['box_size'] if 'box_size' in self.entity_data else constants.BOX_SIZE_POSTER
-    
+
     def set_box_sizing(self, box_size):
         self.entity_data['box_size'] = box_size
 
     def get_last_change_timestamp(self) -> datetime:
         if 'last_change_on' not in self.entity_data or not self.entity_data['last_change_on']:
             return datetime.datetime.today()
-        
+
         return datetime.datetime.fromisoformat(self.entity_data['last_change_on'])
-    
+
     def get_asset_ids_list(self):
         return constants.LAUNCHER_ASSET_ID_LIST
 
@@ -1491,7 +1515,7 @@ class ROMCollection(MetaDataItemABC):
 
     def get_default_icon(self) -> str:
         return 'DefaultGameAddons.png'
-    
+
     def get_ROM_mappable_asset_list(self) -> typing.List[AssetInfo]:
         return g_assetFactory.get_asset_list_by_IDs(constants.MAPPABLE_ROM_ASSET_ID_LIST)
 
@@ -1532,10 +1556,10 @@ class ROMCollection(MetaDataItemABC):
             current_default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
             if current_default_launcher:
                 current_default_launcher.set_default(False)
-            
+
         self.launchers_data.append(launcher)
         logger.debug(f'Adding launcher "{launcher.get_id()}" to collection "{self.get_name()}"')
-        
+
     def get_launchers(self) -> typing.List[ROMLauncherAddon]:
         return self.launchers_data
 
@@ -1548,17 +1572,17 @@ class ROMCollection(MetaDataItemABC):
         default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
         if default_launcher is None:
             return self.launchers_data[0]
-        
+
         return default_launcher
 
     def set_launcher_as_default(self, launcher_id):
         if len(self.launchers_data) == 0:
             return
-        
+
         current_default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
         if current_default_launcher:
             current_default_launcher.set_default(False)
-        
+
         launcher_to_be_default = next((ldd for ldd in self.launchers_data if ldd.get_id() == launcher_id), None)
         if launcher_to_be_default:
             launcher_to_be_default.set_default(True)
@@ -1622,7 +1646,7 @@ class ROMCollection(MetaDataItemABC):
         logger.debug("ROMCollection.import_NFO_file() Imported '{0}'".format(nfo_FileName.getPath()))
 
         return True
-    
+
     def export_to_NFO_file(self, nfo_FileName: io.FileName):
         # --- Get NFO file name ---
         logger.debug('ROMCollection.export_to_NFO_file() Exporting launcher NFO "{0}"'.format(nfo_FileName.getPath()))
@@ -1633,15 +1657,15 @@ class ROMCollection(MetaDataItemABC):
         nfo_content.append('<!-- Exported by AKL on {0} -->\n'.format(time.strftime("%Y-%m-%d %H:%M:%S")))
         nfo_content.append('<romcollection>\n')
         nfo_content.append(text.XML_line('year', self.get_releaseyear()))
-        nfo_content.append(text.XML_line('genre', self.get_genre())) 
+        nfo_content.append(text.XML_line('genre', self.get_genre()))
         nfo_content.append(text.XML_line('developer', self.get_developer()))
         nfo_content.append(text.XML_line('rating', self.get_rating()))
         nfo_content.append(text.XML_line('plot', self.get_plot()))
-        
+
         nfo_content.append('</romcollection>\n')
         full_string = ''.join(nfo_content)
         nfo_FileName.writeAll(full_string)
-            
+
     def export_to_file(self, file: io.FileName):
         logger.debug('ROMCollection.export_to_file() ROMCollection "{0}" (ID "{1}")'.format(self.get_name(), self.get_id()))
 
@@ -1667,47 +1691,47 @@ class ROMCollection(MetaDataItemABC):
         str_list.append(text.XML_line('s_trailer', self.get_trailer()))
         str_list.append('</romcollection>\n')
         str_list.append('</advanced_emulator_launcher_configuration>\n')
-        
+
         full_string = ''.join(str_list)
         file.writeAll(full_string)
-            
+
     def __str__(self):
         return super().__str__()
-     
+
 
 class VirtualCollection(ROMCollection):
     def __init__(self,
-                 entity_data: dict = None, 
+                 entity_data: dict = None,
                  assets_data: typing.List[Asset] = None):
         # Concrete classes are responsible of creating a default entity_data dictionary
         # with sensible defaults.
         if entity_data is None:
             entity_data = _get_default_ROMCollection_data_model()
             entity_data['id'] = text.misc_generate_random_SID()
-            
+
         super(VirtualCollection, self).__init__(entity_data, assets_data)
 
     def get_object_name(self):
         return "Virtual Collection"
-    
+
     def get_type(self):
         return constants.OBJ_COLLECTION_VIRTUAL
-        
+
     def get_asset_ids_list(self):
         return constants.COLLECTION_ASSET_ID_LIST
 
     def get_mappable_asset_ids_list(self):
         return constants.MAPPABLE_LAUNCHER_ASSET_ID_LIST
-    
+
     def get_collection_value(self) -> str:
         return self.entity_data['collection_value'] if 'collection_value' in self.entity_data else None
-  
+
 
 # -------------------------------------------------------------------------------------------------
 # Class representing a ROM file you can play through AKL.
 # -------------------------------------------------------------------------------------------------
 class ROM(MetaDataItemABC):
-        
+
     def __init__(self,
                  rom_data: dict = None,
                  tag_data: dict = None,
@@ -1742,7 +1766,7 @@ class ROM(MetaDataItemABC):
                 'launch_count': 0,
                 'last_launch_timestamp': None
             }
-    
+
         self.tags = tag_data
         self.scanned_data = scanned_data
         self.launchers_data = launchers_data
@@ -1750,7 +1774,7 @@ class ROM(MetaDataItemABC):
         if self.tags is None and 'rom_tags' in rom_data:
             tag_data_str = str(rom_data['rom_tags'])
             self.tags = {t: '' for t in tag_data_str.split(',')}
-        
+
         mappable_assets = self.get_mappable_asset_list()
         if len(asset_mappings) != len(mappable_assets):
             already_mapped_assets_ids = [m.asset_info.id for m in asset_mappings]
@@ -1758,29 +1782,29 @@ class ROM(MetaDataItemABC):
                 mapping = RomAssetMapping()
                 mapping.asset_info = asset_info
                 asset_mappings.append(mapping)
-           
+
         super(ROM, self).__init__(rom_data, assets_data, asset_paths_data, asset_mappings)
-        
+
     def get_object_name(self):
         return 'ROM'
 
     def get_type(self):
         return constants.OBJ_ROM
-      
+
     def get_rom_identifier(self) -> str:
         identifier = self.get_scanned_data_element('identifier')
         name = self.get_name()
-        
+
         if identifier:
             return identifier
         if name:
             return name
-        
+
         return f'ROM_{self.get_id()}'
-          
+
     def get_platform(self):
         return self.entity_data['platform'] if 'platform' in self.entity_data else None
-    
+
     def get_nointro_status(self):
         return self.entity_data['nointro_status'] if 'nointro_status' in self.entity_data else ''
 
@@ -1789,7 +1813,7 @@ class ROM(MetaDataItemABC):
 
     def get_clone(self):
         return self.entity_data['cloneof']
-    
+
     def has_multiple_disks(self):
         return 'disks' in self.entity_data and self.entity_data['disks']
 
@@ -1798,7 +1822,7 @@ class ROM(MetaDataItemABC):
             return []
 
         return self.entity_data['disks']
-    
+
     def get_extra_ROM(self):
         return self.entity_data['i_extra_ROM']
 
@@ -1808,9 +1832,9 @@ class ROM(MetaDataItemABC):
     def get_nfo_file(self):
         ROM_FileName = self.get_scanned_data_element_as_file('file')
         if ROM_FileName:
-            nfo_file_path = ROM_FileName.changeExtension('.nfo')            
+            nfo_file_path = ROM_FileName.changeExtension('.nfo')
             return nfo_file_path
-        
+
         return None
 
     def get_number_of_players(self):
@@ -1824,13 +1848,13 @@ class ROM(MetaDataItemABC):
 
     def get_pegi_rating(self):
         return self.entity_data['pegi']
-    
+
     def get_rom_status(self):
         return self.entity_data['rom_status'] if 'rom_status' in self.entity_data else None
 
     def is_favourite(self) -> bool:
         return self.entity_data['is_favourite'] if 'is_favourite' in self.entity_data else False
-    
+
     def get_tags(self) -> typing.List[str]:
         if self.tags is not None:
             return [tag for tag in list(self.tags.keys()) if tag is not None]
@@ -1853,7 +1877,7 @@ class ROM(MetaDataItemABC):
     def add_disk(self, disk):
         if 'disks' not in self.entity_data or self.entity_data['disks'] is None:
             self.entity_data['disks'] = []
-            
+
         disks: list = self.entity_data['disks']
         disks.append(disk)
         self.entity_data['disks'] = disks
@@ -1869,10 +1893,10 @@ class ROM(MetaDataItemABC):
 
     def set_pegi_rating(self, pegi):
         self.entity_data['pegi'] = pegi
-        
-    def set_platform(self, platform): 
+
+    def set_platform(self, platform):
         self.entity_data['platform'] = platform
-    
+
     def add_tag(self, tag: str):
         if self.tags is None:
             self.tags = {}
@@ -1901,20 +1925,20 @@ class ROM(MetaDataItemABC):
 
     def scanned_by(self, scanner_id: str):
         self.entity_data['scanned_by_id'] = scanner_id
-        
+
     def get_scanned_data(self):
         return self.scanned_data
 
     def get_scanned_data_element(self, key: str):
         return self.scanned_data[key] if key in self.scanned_data else None
-    
+
     def get_scanned_data_element_as_file(self, key: str) -> io.FileName:
         scanned_value = self.scanned_data[key] if key in self.scanned_data else None
         return self._to_filename(scanned_value)
-    
+
     def set_scanned_data_element(self, key: str, data):
         self.scanned_data[key] = data
-    
+
     def set_rom_status(self, state):
         self.entity_data['rom_status'] = state
 
@@ -1929,7 +1953,7 @@ class ROM(MetaDataItemABC):
 
     def get_box_sizing(self):
         return self.entity_data['box_size'] if 'box_size' in self.entity_data else constants.BOX_SIZE_POSTER
-    
+
     def set_box_sizing(self, box_size):
         self.entity_data['box_size'] = box_size
 
@@ -1944,7 +1968,7 @@ class ROM(MetaDataItemABC):
             current_default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
             if current_default_launcher:
                 current_default_launcher.set_default(False)
-            
+
         self.launchers_data.append(launcher)
         logger.debug(f'Adding launcher "{launcher.get_id()}" to ROM "{self.get_name()}"')
 
@@ -1960,28 +1984,28 @@ class ROM(MetaDataItemABC):
         default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
         if default_launcher is None:
             return self.launchers_data[0]
-        
+
         return default_launcher
 
     def set_launcher_as_default(self, launcher_id):
         if len(self.launchers_data) == 0:
             return
-        
+
         current_default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
         if current_default_launcher:
             current_default_launcher.set_default(False)
-        
+
         launcher_to_be_default = next((ld for ld in self.launchers_data if ld.get_id() == launcher_id), None)
         if launcher_to_be_default:
             launcher_to_be_default.set_default(True)
-            
+
     def copy(self):
         data = self.copy_of_data_dic()
         return ROM(data)
 
     def get_asset_ids_list(self):
         return constants.ROM_ASSET_ID_LIST
-    
+
     def get_mappable_asset_ids_list(self):
         return constants.MAPPABLE_ROM_ASSET_ID_LIST
 
@@ -2006,7 +2030,7 @@ class ROM(MetaDataItemABC):
 
     def get_default_icon(self) -> str:
         return 'DefaultProgram.png'
-    
+
     def create_dto(self) -> api.ROMObj:
         dto_data: dict = api.ROMObj.get_data_template()
         for key in list(dto_data.keys()):
@@ -2019,13 +2043,13 @@ class ROM(MetaDataItemABC):
             asset_info = g_assetFactory.get_asset_info(asset_id)
             asset = self.get_asset(asset_id)
             asset_path = self.get_asset_path(asset_info)
-            
+
             dto_data['asset_paths'][asset_id] = asset_path.getPath() if asset_path is not None else None
             dto_data['assets'][asset_id] = asset.get_path() if asset is not None else None
             dto_data['scanned_data'] = self.scanned_data
-            
+
         return api.ROMObj(dto_data)
-    
+
     #
     # Reads an NFO file with ROM information.
     # See comments in fs_export_ROM_NFO() about verbosity.
@@ -2090,7 +2114,7 @@ class ROM(MetaDataItemABC):
             kodi.notify(kodi.translate(41046).format(nfo_file_path.getPath()))
 
         return True
-        
+
     def export_to_NFO_file(self, nfo_FileName: io.FileName):
         # --- Get NFO file name ---
         logger.debug('ROM.export_to_NFO_file() Exporting ROM NFO "{0}"'.format(nfo_FileName.getPath()))
@@ -2102,7 +2126,7 @@ class ROM(MetaDataItemABC):
         nfo_content.append('<ROM>\n')
         nfo_content.append(text.XML_line('title', self.get_name()))
         nfo_content.append(text.XML_line('year', self.get_releaseyear()))
-        nfo_content.append(text.XML_line('genre', self.get_genre())) 
+        nfo_content.append(text.XML_line('genre', self.get_genre()))
         nfo_content.append(text.XML_line('developer', self.get_developer()))
         nfo_content.append(text.XML_line('nplayers', self.get_number_of_players()))
         nfo_content.append(text.XML_line('esrb', self.get_esrb_rating()))
@@ -2110,16 +2134,16 @@ class ROM(MetaDataItemABC):
         nfo_content.append(text.XML_line('rating', self.get_rating()))
         nfo_content.append(text.XML_line('plot', self.get_plot()))
         nfo_content.append(text.XML_line('trailer', self.get_trailer()))
-        
+
         nfo_content.append('</ROM>\n')
         full_string = ''.join(nfo_content)
         nfo_FileName.writeAll(full_string)
-    
-    # 
+
+    #
     # Updates an ROM entity with the API object given.
     # Flags indicate which elements are allowed to be updated/altered with the incoming data.
     #
-    def update_with(self, 
+    def update_with(self,
                     api_rom_obj: api.ROMObj,
                     metadata_to_update=[],
                     assets_to_update=[],
@@ -2141,55 +2165,55 @@ class ROM(MetaDataItemABC):
             and (overwrite_existing_metadata or
                  _is_empty_or_default(self.get_plot(), constants.DEFAULT_META_PLOT)):
             self.set_plot(api_rom_obj.get_plot())
-    
+
         if constants.META_YEAR_ID in metadata_to_update \
             and api_rom_obj.get_releaseyear() \
             and (overwrite_existing_metadata or
                  _is_empty_or_default(self.get_releaseyear(), constants.DEFAULT_META_YEAR)):
             self.set_releaseyear(api_rom_obj.get_releaseyear())
-        
+
         if constants.META_GENRE_ID in metadata_to_update \
             and api_rom_obj.get_genre() \
             and (overwrite_existing_metadata or
                  _is_empty_or_default(self.get_genre(), constants.DEFAULT_META_GENRE)):
             self.set_genre(api_rom_obj.get_genre())
-        
+
         if constants.META_DEVELOPER_ID in metadata_to_update \
             and api_rom_obj.get_developer() \
             and (overwrite_existing_metadata or
                  _is_empty_or_default(self.get_developer(), constants.DEFAULT_META_DEVELOPER)):
             self.set_developer(api_rom_obj.get_developer())
-        
+
         if constants.META_NPLAYERS_ID in metadata_to_update \
             and api_rom_obj.get_number_of_players() \
             and (overwrite_existing_metadata or
                  _is_empty_or_default(self.get_number_of_players(), constants.DEFAULT_META_NPLAYERS)):
             self.set_number_of_players(api_rom_obj.get_number_of_players())
-        
+
         if constants.META_NPLAYERS_ONLINE_ID in metadata_to_update \
             and api_rom_obj.get_number_of_players_online() \
             and (overwrite_existing_metadata or
                  _is_empty_or_default(self.get_number_of_players_online(), constants.DEFAULT_META_NPLAYERS)):
             self.set_number_of_players_online(api_rom_obj.get_number_of_players_online())
-        
+
         if constants.META_ESRB_ID in metadata_to_update\
                 and api_rom_obj.get_esrb_rating() \
                 and (overwrite_existing_metadata or
                      _is_empty_or_default(self.get_esrb_rating(), constants.DEFAULT_META_ESRB)):
             self.set_esrb_rating(api_rom_obj.get_esrb_rating())
-        
+
         if constants.META_PEGI_ID in metadata_to_update\
                 and api_rom_obj.get_pegi_rating() \
                 and (overwrite_existing_metadata or
-                     _is_empty_or_default(self.get_pegi_rating(), constants.DEFAULT_META_PEGI)):       
+                     _is_empty_or_default(self.get_pegi_rating(), constants.DEFAULT_META_PEGI)):
             self.set_pegi_rating(api_rom_obj.get_pegi_rating())
-        
+
         if constants.META_RATING_ID in metadata_to_update \
                 and api_rom_obj.get_rating() \
                 and (overwrite_existing_metadata or
-                     _is_empty_or_default(self.get_rating(), constants.DEFAULT_META_RATING)):      
+                     _is_empty_or_default(self.get_rating(), constants.DEFAULT_META_RATING)):
             self.set_rating(api_rom_obj.get_rating())
-        
+
         if constants.META_TAGS_ID in metadata_to_update and api_rom_obj.get_tags() is not None:
             for tag in api_rom_obj.get_tags():
                 self.add_tag(tag)
@@ -2198,7 +2222,7 @@ class ROM(MetaDataItemABC):
         if extra_data:
             for key, value in extra_data.items():
                 self.set_extra_data(key, value)
-                    
+
         if len(assets_to_update) > 0:
             for asset_id in assets_to_update:
                 existing_asset = self.get_asset(asset_id)
@@ -2211,32 +2235,32 @@ class ROM(MetaDataItemABC):
                         asset_info = g_assetFactory.get_asset_info(asset_id)
                         asset_path = io.FileName(new_asset)
                         self.set_asset(asset_info, asset_path)
-        
+
         if update_scanned_data:
             scanned_name = api_rom_obj.get_name()
             scanned_data = api_rom_obj.get_scanned_data()
-            
+
             if scanned_name:
                 self.set_name(scanned_name)
             for scanned_entry in list(scanned_data.keys()):
                 self.set_scanned_data_element(scanned_entry, scanned_data[scanned_entry])
-                
+
             # if 'romcollection' in launcher_settings \
             # and kodi.dialog_yesno('Do you want to overwrite collection metadata properties with values from the launcher?'):
             # romcollection.import_data_dic(launcher_settings['romcollection'])
             # metadata_updated = True
-     
+
     def apply_source_asset_paths(self, source: Source):
         self.asset_paths = {}
         for assetpath in source.get_asset_paths():
             self.asset_paths[assetpath.get_asset_info_id()] = assetpath
-    
+
     def apply_romcollection_asset_mapping(self, romcollection: ROMCollection):
         mappable_assets = romcollection.get_ROM_mappable_asset_list()
         for mappable_asset in mappable_assets:
             mapped_asset = romcollection.get_ROM_asset_mapping(mappable_asset)
             self.set_mapped_asset(mappable_asset, mapped_asset)
-        
+
     def get_fields_with_translations():
         return {
             'm_name': 40815,
@@ -2256,7 +2280,7 @@ class ROM(MetaDataItemABC):
             'launch_count': 40819,
             'tags': 40810
         }
-        
+
     def __str__(self):
         """Overrides the default implementation"""
         return json.dumps(self.entity_data)
@@ -2270,12 +2294,12 @@ class ROM(MetaDataItemABC):
 # This class uses the asset_infos, dictionary of AssetInfo indexed by asset_ID
 #
 class AssetInfoFactory(object):
-        
-    def __init__(self):        
+
+    def __init__(self):
         # default collections
         self.ASSET_INFO_ID_DICT: typing.Dict[str, AssetInfo] = {}  # ID -> object
         self._load_asset_data()
-        
+
     # -------------------------------------------------------------------------------------------------
     # Asset functions
     # -------------------------------------------------------------------------------------------------
@@ -2290,7 +2314,7 @@ class AssetInfoFactory(object):
             return AssetInfo()
 
         return asset_info
-    
+
     # Returns the corresponding assetinfo object for the
     # given path key (eg: 'path_icon')
     def get_asset_info_by_pathkey(self, path_key):
@@ -2301,7 +2325,7 @@ class AssetInfoFactory(object):
             return None
 
         return asset_info
-    
+
     def get_assets_for_type(self, obj_type) -> typing.List[AssetInfo]:
         if obj_type == constants.OBJ_CATEGORY:
             return self.get_asset_list_by_IDs(constants.CATEGORY_ASSET_ID_LIST)
@@ -2332,7 +2356,7 @@ class AssetInfoFactory(object):
                 asset_info_list.append(asset_info)
 
         return asset_info_list
-  
+
     #
     # Get extensions to search for files
     # Input : ['png', 'jpg']
@@ -2437,33 +2461,33 @@ class AssetInfoFactory(object):
 
     def get_rom_asset_paths(self, rom: ROM = None, source: Source = None) -> typing.List[AssetInfo]:
         asset_paths = []
-        
+
         for asset_id in constants.ROM_ASSET_ID_LIST:
             asset_info = self.get_asset_info(asset_id)
             path = self.get_rom_asset_path(asset_info, rom, source)
-            
+
             asset_path_obj = AssetPath()
             asset_path_obj.set_path_FN(path)
             asset_path_obj.set_asset_info(asset_info)
             asset_paths.append(asset_path_obj)
         return asset_paths
-        
+
     def get_rom_asset_path(self, asset_info: AssetInfo, rom: ROM = None, source: Source = None):
         if rom:
             path = rom.get_asset_path(asset_info)
             if path:
                 return path
-        
+
         if source:
             path = source.get_asset_path(asset_info, True)
             if path:
                 return path
-        
+
         fallback_assets_dir = settings.getSettingAsFilePath('launchers_asset_dir', isdir=True,
                                                             fallback=globals.g_PATHS.DEFAULT_ROM_ASSET_DIR)
         path = fallback_assets_dir.pjoin(asset_info.plural.lower(), isdir=True)
         return path
-    
+
     #
     # Gets extensions to be used in regular expressions.
     # Input : ['png', 'jpg']
@@ -2478,11 +2502,11 @@ class AssetInfoFactory(object):
         ext_string = ext_string[:-1]
 
         return '(' + ext_string + ')'
-    
+
     # since we are using a single instance for the assetinfo factory we can automatically load
     # all the asset objects into the memory
-    def _load_asset_data(self): 
-                
+    def _load_asset_data(self):
+
         # >> These are used very frequently so I think it is better to have a cached list.
         a = AssetInfo()
         a.id = constants.ASSET_ICON_ID
@@ -2493,7 +2517,7 @@ class AssetInfoFactory(object):
         a.kind_str = 'image'
         a.exts = self.asset_get_filesearch_extension_list(constants.IMAGE_EXTENSION_LIST)
         a.exts_dialog = self.asset_get_dialog_extension_list(constants.IMAGE_EXTENSION_LIST)
-        a.path_key = 'path_icon'        
+        a.path_key = 'path_icon'
         self.ASSET_INFO_ID_DICT[a.id] = a
 
         a = AssetInfo()
@@ -2521,7 +2545,7 @@ class AssetInfoFactory(object):
         a.path_key = 'path_banner'
         self.ASSET_INFO_ID_DICT[a.id] = a
 
-        a = AssetInfo()        
+        a = AssetInfo()
         a.id = constants.ASSET_POSTER_ID
         a.name_id = 43004
         a.name = 'Poster'
@@ -2556,7 +2580,7 @@ class AssetInfoFactory(object):
         a.exts_dialog                   = self.asset_get_dialog_extension_list(constants.IMAGE_EXTENSION_LIST)
         a.path_key                      = 'path_controller'
         self.ASSET_INFO_ID_DICT[a.id]   = a
-        
+
         a = AssetInfo()
         a.id                            = constants.ASSET_TRAILER_ID
         a.name_id                       = 43007
@@ -2686,13 +2710,13 @@ g_assetFactory = AssetInfoFactory()
 
 # Factory class to create VirtualCollection instances.
 # A VirtualCollection is similar to a ROMCollection except for the fact that the contents are
-# generated based on either certain flags or conditions of the ROMs. 
+# generated based on either certain flags or conditions of the ROMs.
 class VirtualCollectionFactory(object):
-    
+
     @staticmethod
     def create(vcollection_id: str) -> VirtualCollection:
-        
-        default_entity_data = _get_default_ROMCollection_data_model()        
+
+        default_entity_data = _get_default_ROMCollection_data_model()
         if vcollection_id == constants.VCOLLECTION_FAVOURITES_ID:
             return VirtualCollection(dict(default_entity_data, **{
                 'id' : vcollection_id,
@@ -2716,7 +2740,7 @@ class VirtualCollectionFactory(object):
                     'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Favourites_poster.png').getPath()
                 }),
             ])
-            
+
         if vcollection_id == constants.VCOLLECTION_RECENT_ID:
             return VirtualCollection(dict(default_entity_data, **{
                 'id' : vcollection_id,
@@ -2728,7 +2752,7 @@ class VirtualCollectionFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Recently_played_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Recently_played_poster.png').getPath()}),
             ])
-            
+
         if vcollection_id == constants.VCOLLECTION_MOST_PLAYED_ID:
             return VirtualCollection(dict(default_entity_data, **{
                 'id' : vcollection_id,
@@ -2739,8 +2763,8 @@ class VirtualCollectionFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_FANART_ID, 'filepath' : globals.g_PATHS.FANART_FILE_PATH.getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Most_played_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Most_played_poster.png').getPath()}),
-            ])    
-        
+            ])
+
         return None
 
     @staticmethod
@@ -2763,11 +2787,11 @@ class VirtualCollectionFactory(object):
         ])
 
 class VirtualCategoryFactory(object):
-    
+
     @staticmethod
     def create(vcategory_id: str) -> VirtualCategory:
-        
-        default_entity_data = _get_default_category_data_model()   
+
+        default_entity_data = _get_default_category_data_model()
         if vcategory_id  == constants.VCATEGORY_ROOT_ID:
              return VirtualCategory(dict(default_entity_data, **{
                 'id' : vcategory_id,
@@ -2779,7 +2803,7 @@ class VirtualCategoryFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_poster.png').getPath()}),
             ])
-            
+
         if vcategory_id == constants.VCATEGORY_TITLE_ID:
              return VirtualCategory(dict(default_entity_data, **{
                 'id' : vcategory_id,
@@ -2791,7 +2815,7 @@ class VirtualCategoryFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_Title_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_Title_poster.png').getPath()}),
             ])
-             
+
         if vcategory_id == constants.VCATEGORY_YEARS_ID:
              return VirtualCategory(dict(default_entity_data, **{
                 'id' : vcategory_id,
@@ -2802,8 +2826,8 @@ class VirtualCategoryFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_FANART_ID, 'filepath' : globals.g_PATHS.FANART_FILE_PATH.getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_Year_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_Year_poster.png').getPath()}),
-            ])     
-             
+            ])
+
         if vcategory_id == constants.VCATEGORY_GENRE_ID:
              return VirtualCategory(dict(default_entity_data, **{
                 'id' : vcategory_id,
@@ -2814,8 +2838,8 @@ class VirtualCategoryFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_FANART_ID, 'filepath' : globals.g_PATHS.FANART_FILE_PATH.getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_Genre_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_Genre_poster.png').getPath()}),
-            ])     
-             
+            ])
+
         if vcategory_id == constants.VCATEGORY_DEVELOPER_ID:
              return VirtualCategory(dict(default_entity_data, **{
                 'id' : vcategory_id,
@@ -2826,8 +2850,8 @@ class VirtualCategoryFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_FANART_ID, 'filepath' : globals.g_PATHS.FANART_FILE_PATH.getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_Developer_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_Developer_poster.png').getPath()}),
-            ])     
-             
+            ])
+
         if vcategory_id == constants.VCATEGORY_NPLAYERS_ID:
              return VirtualCategory(dict(default_entity_data, **{
                 'id' : vcategory_id,
@@ -2838,8 +2862,8 @@ class VirtualCategoryFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_FANART_ID, 'filepath' : globals.g_PATHS.FANART_FILE_PATH.getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_NPlayers_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_NPlayers_poster.png').getPath()}),
-            ])    
-                    
+            ])
+
         if vcategory_id == constants.VCATEGORY_ESRB_ID:
              return VirtualCategory(dict(default_entity_data, **{
                 'id' : vcategory_id,
@@ -2850,8 +2874,8 @@ class VirtualCategoryFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_FANART_ID, 'filepath' : globals.g_PATHS.FANART_FILE_PATH.getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_ESRB_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_ESRB_poster.png').getPath()}),
-            ])  
-             
+            ])
+
         if vcategory_id == constants.VCATEGORY_PEGI_ID:
              return VirtualCategory({
                 'id' : vcategory_id,
@@ -2862,8 +2886,8 @@ class VirtualCategoryFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_FANART_ID, 'filepath' : globals.g_PATHS.FANART_FILE_PATH.getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_PEGI_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_PEGI_poster.png').getPath()}),
-            ])  
-                     
+            ])
+
         if vcategory_id == constants.VCATEGORY_RATING_ID:
              return VirtualCategory(dict(default_entity_data, **{
                 'id' : vcategory_id,
@@ -2875,27 +2899,27 @@ class VirtualCategoryFactory(object):
                 Asset({'id' : '', 'asset_type' : constants.ASSET_ICON_ID,   'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_User_Rating_icon.png').getPath()}),
                 Asset({'id' : '', 'asset_type' : constants.ASSET_POSTER_ID, 'filepath' : globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Browse_by_User_Rating_poster.png').getPath()}),
             ])
-                
+
         return None
 
-  
+
 class ROMLauncherAddonFactory(object):
 
     @staticmethod
     def create(addon: AklAddon, data: dict) -> ROMLauncherAddon:
         if addon.get_addon_id() == constants.RETROPLAYER_LAUNCHER_APP_NAME:
             return RetroplayerLauncherAddon(data, addon)
-                    
+
         return ROMLauncherAddon(data, addon)
 
-    
+
 # -------------------------------------------------------------------------------------------------
 # Data model used in the plugin
 # Internally all string in the data model are Unicode. They will be encoded to
 # UTF-8 when writing files.
 # -------------------------------------------------------------------------------------------------
-# These functions create a new data structure for the given object and (very importantly) 
-# fill the correct default values). 
+# These functions create a new data structure for the given object and (very importantly)
+# fill the correct default values).
 #
 def _get_default_category_data_model():
     return {
@@ -2940,7 +2964,7 @@ def _get_default_ROMCollection_data_model():
         'audit_auto_dat_file' : '',
         'audit_custom_dat_file' : '',
         'audit_display_mode' : constants.AUDIT_DMODE_ALL,
-        'launcher_display_mode' : constants.LAUNCHER_DMODE_FLAT,        
+        'launcher_display_mode' : constants.LAUNCHER_DMODE_FLAT,
         'num_roms' : 0,
         'num_parents' : 0,
         'num_clones' : 0,
@@ -2964,10 +2988,10 @@ def _get_default_ROMCollection_data_model():
         'path_flyer' : '',
         'path_map' : '',
         'path_manual' : '',
-        'path_trailer' : ''        
+        'path_trailer' : ''
     }
 
-    
+
 def _get_default_asset_data_model():
     return {
         'id' : '',

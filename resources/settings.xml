@@ -102,7 +102,7 @@
 					<control type="button" format="path">
 						<heading>40303</heading>
 					</control>
-                </setting> 
+                </setting>
                 <setting id="audit_redump_dir" type="path" label="40304" help="">
 					<level>0</level>
 					<default/>
@@ -116,7 +116,7 @@
 					<control type="button" format="path">
 						<heading>40304</heading>
 					</control>
-                </setting> 
+                </setting>
             <!--
                 <setting label="1G1R primary region" type="enum" id="audit_1G1R_first_region" default="0" values="Europe|USA|Japan" />
                 <setting label="1G1R secondary region" type="enum" id="audit_1G1R_second_region" default="0" values="Spain|France|Brazil|Korea" />
@@ -222,7 +222,7 @@
 					<control type="button" format="path">
 						<heading>40501</heading>
 					</control>
-                </setting> 
+                </setting>
                 <setting id="launchers_asset_dir" type="path" label="40502" help="">
 					<level>0</level>
 					<default/>
@@ -236,7 +236,7 @@
 					<control type="button" format="path">
 						<heading>40502</heading>
 					</control>
-                </setting> 
+                </setting>
                 <setting id="collections_asset_dir" type="path" label="40504" help="">
 					<level>0</level>
 					<default/>
@@ -250,8 +250,52 @@
 					<control type="button" format="path">
 						<heading>40504</heading>
 					</control>
-                </setting> 
+                </setting>
                 <!-- <setting label="40503" type="folder" id="favourites_asset_dir" default="" source="" /> -->
+            </group>
+            <group id="setup_default_paths">
+                <setting id="setup_default_roms_root" type="path" label="44038" help="">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <sources>
+                            <source/>
+                        </sources>
+                        <writable>false</writable>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="path">
+                        <heading>44038</heading>
+                    </control>
+                </setting>
+                <setting id="setup_default_emulators_root" type="path" label="44039" help="">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <sources>
+                            <source/>
+                        </sources>
+                        <writable>false</writable>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="path">
+                        <heading>44039</heading>
+                    </control>
+                </setting>
+                <setting id="setup_default_artwork_root" type="path" label="44040" help="">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <sources>
+                            <source/>
+                        </sources>
+                        <writable>false</writable>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="path">
+                        <heading>44040</heading>
+                    </control>
+                </setting>
             </group>
         </category>
         <!-- <category id="plugins" label="40017">
@@ -346,6 +390,13 @@
                     <control type="button" format="action">
                         <data>RunPlugin(plugin://plugin.program.akl/execute/command/reset_database)</data>
                     </control>
+                </setting>
+            </group>
+            <group id="internal">
+                <setting id="first_run_completed" type="boolean" label="44041" help="">
+                    <level>3</level>
+                    <default>false</default>
+                    <control type="toggle"/>
                 </setting>
             </group>
         </category>

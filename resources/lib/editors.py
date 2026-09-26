@@ -217,7 +217,9 @@ def edit_object_assets(obj_instance: MetaDataItemABC, preselected_asset=None) ->
             asset_fname_str
             and not item_path.isVideoFile()
             and not item_path.isManualFile()
+            and os.path.isfile(item_img)
         ):
+
             source_mtime = int(os.path.getmtime(item_img))
 
             display_dir = xbmcvfs.translatePath(

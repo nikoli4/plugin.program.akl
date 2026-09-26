@@ -21,7 +21,7 @@ import logging
 import collections
 import typing
 
-from akl import constants, platforms
+from akl import constants, platforms, settings
 from akl.utils import kodi, io
 
 from resources.lib.commands.mediator import AppMediator
@@ -217,6 +217,26 @@ def cmd_edit_source_scanner(args):
     with uow:
         repository = SourcesRepository(uow)
         source = repository.find(source_id)
+
+    setup_wizard_source_id = kodi.get_windowprop(
+        'AKL.SetupWizard.ScannerSourceID'
+    )
+
+    if setup_wizard_source_id == source_id:
+        default_roms_root = settings.getSetting(
+            'setup_default_roms_root'
+        )
+
+        if default_roms_root:
+            kodi.set_windowprop(
+                'AKL.SetupWizard.DefaultROMsRoot',
+                default_roms_root
+            )
+
+            logger.info(
+                f'SETUP_WIZARD: Set default ROMs root for scanner '
+                f'configuration: "{default_roms_root}".'
+            )
      
     kodi.notify(kodi.translate(40980))
     kodi.run_script(
@@ -399,8 +419,135 @@ def cmd_set_roms_asset_dirs(args):
 
 @AppMediator.register('REMOVE_DEAD_ROMS')
 def cmd_remove_dead_roms(args):
-    # source_id: str = args['source_id'] if 'source_id' in args else None
-    kodi.notify("Not implemented yet")
+    source_id: str = args['source_id'] if 'source_id' in args else None
+
+    if source_id is None:
+        logger.warning('cmd_remove_dead_roms(): No source id supplied.')
+        kodi.notify_warn(kodi.translate(40951))
+        return
+
+    uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
+    with uow:
+        source_repository = SourcesRepository(uow)
+        roms_repository = ROMsRepository(uow)
+
+        source = source_repository.find(source_id)
+        if source is None:
+            logger.warning(f'REMOVE_DEAD_ROMS: Source "{source_id}" not found.')
+            return
+
+        confirm_scan = kodi.dialog_yesno(
+            kodi.translate(44111).format(
+                source.get_name()
+            ),
+            kodi.translate(44110)
+        )
+
+        if not confirm_scan:
+            logger.info(
+                f'REMOVE_DEAD_ROMS: Scan cancelled for source "{source.get_name()}".'
+            )
+            return
+        logger.info(
+            f'REMOVE_DEAD_ROMS: Checking source "{source_id}" for missing ROMs'
+        )
+
+        roms = [*roms_repository.find_roms_by_source(source)]
+
+        if len(roms) == 0:
+            kodi.dialog_OK(
+                kodi.translate(44112),
+                kodi.translate(44110)
+            )
+            return
+
+        logger.info(
+            f'REMOVE_DEAD_ROMS: Checking {len(roms)} ROMs in source "{source.get_name()}"'
+        )
+
+        dead_roms = []
+
+        for rom in roms:
+            rom_path = rom.get_scanned_data_element('file')
+
+            if not rom_path:
+                logger.warning(
+                    f'REMOVE_DEAD_ROMS: ROM "{rom.get_name()}" has no scanned file path. Skipping.'
+                )
+                continue
+
+            rom_file = rom.get_scanned_data_element_as_file('file')
+
+            if not rom_file.exists():
+                logger.info(
+                    f'REMOVE_DEAD_ROMS: Missing ROM "{rom.get_name()}" -> "{rom_file.getPath()}"'
+                )
+                dead_roms.append(rom)
+
+        # Nothing missing. Make the result completely unambiguous.
+        if len(dead_roms) == 0:
+            logger.info(
+                f'REMOVE_DEAD_ROMS: Checked {len(roms)} ROM(s); 0 missing; nothing removed.'
+            )
+
+            kodi.dialog_OK(
+                kodi.translate(44113).format(
+                    len(roms)
+                ),
+                kodi.translate(44110)
+            )
+            return
+
+        # Missing ROMs were found. Confirm before deleting anything.
+        confirm_remove = kodi.dialog_yesno(
+            kodi.translate(44114).format(
+                len(roms),
+                len(dead_roms)
+            ),
+            kodi.translate(44110)
+        )
+
+        if not confirm_remove:
+            logger.info(
+                f'REMOVE_DEAD_ROMS: Found {len(dead_roms)} missing ROM(s); '
+                f'user cancelled removal.'
+            )
+            return
+
+        collection_ids = source_repository.find_romcollection_ids_by_source(source_id)
+
+        for rom in dead_roms:
+            logger.info(
+                f'REMOVE_DEAD_ROMS: Removing "{rom.get_name()}" ({rom.get_id()})'
+            )
+            roms_repository.delete_rom(rom.get_id())
+
+        uow.commit()
+
+    logger.info(
+        f'REMOVE_DEAD_ROMS: Removed {len(dead_roms)} missing ROM(s) '
+        f'from source "{source.get_name()}"'
+    )
+
+    kodi.notify(
+        kodi.translate(44115).format(
+            len(dead_roms),
+            source.get_name()
+        )
+    )
+
+    AppMediator.async_cmd(
+        'RENDER_SOURCE_VIEW',
+        {'source_id': source_id}
+    )
+
+    for collection_id in collection_ids:
+        AppMediator.async_cmd(
+            'RENDER_ROMCOLLECTION_VIEW',
+            {'romcollection_id': collection_id}
+        )
+
+    AppMediator.async_cmd('RENDER_VCATEGORY_VIEWS')
 
 
 @AppMediator.register('EXPORT_ROMS')

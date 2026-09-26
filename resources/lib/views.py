@@ -42,7 +42,7 @@ import xbmc
 import xbmcgui
 import xbmcplugin
 
-from akl import constants
+from akl import constants, settings
 from akl.utils import kodi
 
 from resources.lib import viewqueries, globals, artwork_preferences
@@ -89,6 +89,18 @@ def run_plugin(addon_argv):
 @router.route('/')
 def vw_route_render_root():
     logger.debug("Executing route: vw_route_render_root")
+
+    if not settings.getSettingAsBool('first_run_completed'):
+        logger.info(
+            'FIRST_RUN: First-run setup has not been completed. '
+            'Starting First-Run Setup Assistant.'
+        )
+
+        AppMediator.async_cmd(
+            'FIRST_RUN_SETUP',
+            {}
+        )
+
     container = viewqueries.qry_get_root_items()
     container_context_items = viewqueries.qry_container_context_menu_items(container)
 

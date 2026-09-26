@@ -24,6 +24,8 @@ import resources.lib.commands.romcollection_roms_commands
 import resources.lib.commands.rom_commands
 import resources.lib.commands.rom_launcher_commands
 import resources.lib.commands.source_commands
+import resources.lib.commands.setup_wizard_commands
+import resources.lib.commands.first_run_commands
 import resources.lib.commands.rom_scraper_commands
 import resources.lib.commands.stats_commands
 import resources.lib.commands.misc_commands

@@ -20,6 +20,7 @@ from __future__ import division
 import logging
 import typing
 import collections
+import xbmcaddon
 
 from xml.etree import cElementTree as ET
 from xml.dom import minidom
@@ -34,6 +35,14 @@ from resources.lib.repositories import UnitOfWork, AklAddonRepository, CategoryR
 from resources.lib.domain import Category, ROMCollection, AklAddon
 
 logger = logging.getLogger(__name__)
+
+
+@AppMediator.register('OPEN_SETTINGS')
+def cmd_open_settings(args):
+    logger.info('Opening Advanced Kodi Launcher settings.')
+    xbmcaddon.Addon('plugin.program.akl').openSettings()
+
+
 @AppMediator.register('IMPORT_LAUNCHERS')
 def cmd_execute_import_launchers(args):
     file_list = kodi.browse(text=kodi.translate(41145),mask='.xml', multiple=True)
@@ -42,7 +51,7 @@ def cmd_execute_import_launchers(args):
     with uow:
         addon_repository = AklAddonRepository(uow)
         available_launchers = [*addon_repository.find_all_launcher_addons()]
-        
+
         categories_repository = CategoryRepository(uow)
         existing_categories   = [*categories_repository.find_all_categories()]
 
@@ -78,7 +87,7 @@ def cmd_execute_import_launchers(args):
                     categories_to_insert.append(category_to_import)
 
             for launcher_to_import in launchers_to_import:
-                _apply_addon_launcher_for_legacy_launcher(launcher_to_import, available_launcher_ids)                
+                _apply_addon_launcher_for_legacy_launcher(launcher_to_import, available_launcher_ids)
                 if launcher_to_import.get_id() in existing_romcollection_ids:
                      # >> Romset exists (by name). Overwrite?
                     logger.debug('ROMCollection found. Edit existing ROMCollection.')
@@ -93,7 +102,7 @@ def cmd_execute_import_launchers(args):
 
         for category_to_update in categories_to_update:
             categories_repository.update_category(category_to_update)
-            
+
         for romcollection_to_insert in romcollections_to_insert:
             parent_id = romcollection_to_insert.get_custom_attribute('parent_id')
             parent_obj = next((c for c in existing_categories if c.get_id() == parent_id), None)
@@ -129,12 +138,12 @@ def cmd_export_to_xml(args):
 
     uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
     with uow:
-        categories_repository     = CategoryRepository(uow)        
+        categories_repository     = CategoryRepository(uow)
         romcollections_repository = ROMCollectionRepository(uow)
-        
+
         existing_categories     = [*categories_repository.find_all_categories()]
         existing_romcollections = [*romcollections_repository.find_all_romcollections()]
-    
+
         # --- Export stuff ---
         try:
             # --- XML header ---
@@ -155,7 +164,7 @@ def cmd_export_to_xml(args):
                 ET.SubElement(category_xml,'Asset_Prefix').text = category.get_custom_attribute('Asset_Prefix')
                 for asset in category.get_assets():
                     ET.SubElement(category_xml, f"s_{asset.get_asset_info().id}").text = asset.get_path()
-            
+
             # --- Export Launchers and add XML tail ---
             # Data which is not string must be converted to string
             for collection in sorted(existing_romcollections, key = lambda rc : rc.get_name()):
@@ -185,17 +194,17 @@ def cmd_export_to_xml(args):
                 ET.SubElement(launcher_xml, 'rating').text = collection.get_rating()
                 ET.SubElement(launcher_xml, 'plot').text = collection.get_plot()
                 ET.SubElement(launcher_xml, 'platform').text = collection.get_platform()
-                
+
                 launcher = collection.get_default_launcher()
                 if launcher:
                     for key, value in launcher.get_settings().items():
                         ET.SubElement(launcher_xml, key, value)
-                
+
                 scanners = collection.get_scanners()
                 scanner_data = scanners[0].get_settings() if scanners and len(scanners) > 0 else {}
                 ET.SubElement(launcher_xml, 'ROM_path').text = scanner_data['rompath'] if 'rompath' in scanner_data else ''
                 ET.SubElement(launcher_xml, 'ROM_ext').text = scanner_data['romext'] if 'romext' in scanner_data else ''
-                
+
                 ET.SubElement(launcher_xml,'Asset_Prefix').text = collection.get_custom_attribute('Asset_Prefix')
                 for path in collection.get_asset_paths():
                     ET.SubElement(launcher_xml, path.get_asset_info().path_key).text = path.get_path()
@@ -215,7 +224,7 @@ def cmd_export_to_xml(args):
 def cmd_execute_reset_db(args):
     if not kodi.dialog_yesno(kodi.translate(41053)):
         return
-    
+
     uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
     uow.reset_database(globals.g_PATHS.DATABASE_SCHEMA_PATH)
 
@@ -227,25 +236,25 @@ def cmd_execute_reset_db(args):
 @AppMediator.register('RUN_DB_MIGRATIONS')
 def cmd_execute_migrations(args):
     uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
-    
+
     db_version = LooseVersion(uow.get_database_version())
     migrations_in_database = uow.get_migrations_history()
 
     options = collections.OrderedDict()
     migrations_files_available = uow.get_migration_files(LooseVersion("0.0.0"))
-    
+
     for migration_file in migrations_files_available:
         file_name = migration_file.getBase()
         existing_migration = next((m for m in migrations_in_database if m["migration_file"] == file_name), None)
         state = "NEW" if existing_migration is None else ("DONE" if existing_migration["applied"] else "FAILED")
         options[migration_file.getPath()] = f"{migration_file.getBase()} [{state}]"
-            
+
     dialog = kodi.OrdDictionaryDialog()
     selected_file = dialog.select(kodi.translate(41088).format(db_version), options)
 
     if selected_file is None:
         return
-    
+
     logger.debug(f"RUN_DB_MIGRATIONS: Selected {selected_file}")
     migration_file = io.FileName(selected_file)
     version_to_store = LooseVersion(globals.addon_version)
@@ -254,20 +263,20 @@ def cmd_execute_migrations(args):
         version_to_store = file_version
     if db_version > version_to_store:
         version_to_store = db_version
-    
+
     dialog = kodi.ListDialog()
     selected_index = dialog.select(kodi.translate(41089).format(migration_file.getBaseNoExt()), [
         kodi.translate(41090),
         kodi.translate(41091)
     ])
-    
+
     if selected_index is None or selected_index < 0:
         return
-    
+
     if selected_index == 0:
         if not kodi.dialog_yesno(kodi.translate(41055).format(migration_file.getBaseNoExt())):
             return
-        
+
     uow.migrate_database([migration_file], version_to_store, selected_index == 1)
     kodi.notify(kodi.translate(41016))
 
@@ -275,7 +284,7 @@ def cmd_execute_migrations(args):
 @AppMediator.register('CHECK_DUPLICATE_ASSET_DIRS')
 def cmd_check_duplicate_asset_dirs(args):
     source_id: str = args['source_id'] if 'source_id' in args else None
-    
+
     uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
     with uow:
         repository = SourcesRepository(uow)
@@ -291,94 +300,94 @@ def cmd_check_duplicate_asset_dirs(args):
 def _apply_addon_launcher_for_legacy_launcher(collection: ROMCollection, available_addons: typing.Dict[str, AklAddon]):
     launcher_type = collection.get_custom_attribute('type')
     logger.debug(f'Migrating launcher of type "{launcher_type}" for romcollection {collection.get_name()}')
-    
+
     if launcher_type is None:
         # 1.9x version
         launcher_addon  = available_addons['script.akl.defaults'] if 'script.akl.defaults' in available_addons else None
-        if launcher_addon is None: 
-            logger.warning(f'Could not find launcher addon supporting type "{launcher_type}"') 
+        if launcher_addon is None:
+            logger.warning(f'Could not find launcher addon supporting type "{launcher_type}"')
             return
         non_blocking = collection.get_custom_attribute('non_blocking')
-        settings = { 
-            'application': collection.get_custom_attribute('application'), 
+        settings = {
+            'application': collection.get_custom_attribute('application'),
             'args': collection.get_custom_attribute('args')
         }
         collection.add_launcher(launcher_addon, settings, non_blocking, True)
         return
-    
+
     if launcher_type == constants.OBJ_LAUNCHER_STANDALONE:
         launcher_addon =  available_addons['script.akl.defaults'] if 'script.akl.defaults' in available_addons else None
-        if launcher_addon is None: 
-            logger.warning(f'Could not find launcher addon supporting type "{launcher_type}"') 
+        if launcher_addon is None:
+            logger.warning(f'Could not find launcher addon supporting type "{launcher_type}"')
             return
         non_blocking = collection.get_custom_attribute('non_blocking')
-        settings = { 
-            'application': collection.get_custom_attribute('application'), 
+        settings = {
+            'application': collection.get_custom_attribute('application'),
             'args': collection.get_custom_attribute('args')
         }
         collection.add_launcher(launcher_addon, settings, non_blocking, True)
         return
-    
+
     if launcher_type == constants.OBJ_LAUNCHER_ROM or launcher_type == 'ROM':
         launcher_addon =  available_addons['script.akl.defaults'] if 'script.akl.defaults' in available_addons else None
-        if launcher_addon is None: 
-            logger.warning('Could not find launcher addon supporting type "{}"'.format(launcher_type)) 
+        if launcher_addon is None:
+            logger.warning('Could not find launcher addon supporting type "{}"'.format(launcher_type))
             return
         non_blocking = collection.get_custom_attribute('non_blocking')
-        settings = { 
-            'application': collection.get_custom_attribute('application'), 
+        settings = {
+            'application': collection.get_custom_attribute('application'),
             'args': collection.get_custom_attribute('args')
         }
         collection.add_launcher(launcher_addon, settings, non_blocking, True)
         return
-    
+
     if launcher_type == constants.OBJ_LAUNCHER_RETROPLAYER:
         launcher_addon =  available_addons[constants.RETROPLAYER_LAUNCHER_APP_NAME] if constants.RETROPLAYER_LAUNCHER_APP_NAME in available_addons else None
-        if launcher_addon is None: 
-            logger.warning(f'Could not find launcher addon supporting type "{launcher_type}"') 
+        if launcher_addon is None:
+            logger.warning(f'Could not find launcher addon supporting type "{launcher_type}"')
             return
         non_blocking = collection.get_custom_attribute('non_blocking')
-        settings = { 
-            'application': collection.get_custom_attribute('application'), 
+        settings = {
+            'application': collection.get_custom_attribute('application'),
             'args': collection.get_custom_attribute('args')
         }
         collection.add_launcher(launcher_addon, settings, non_blocking, True)
         return
-    
+
     if launcher_type == constants.OBJ_LAUNCHER_RETROARCH:
         launcher_addon =  available_addons['script.akl.retroarchlauncher'] if 'script.akl.retroarchlauncher' in available_addons else None
-        if launcher_addon is None: 
-            logger.warning(f'Could not find launcher addon supporting type "{launcher_type}"') 
+        if launcher_addon is None:
+            logger.warning(f'Could not find launcher addon supporting type "{launcher_type}"')
             return
         non_blocking = collection.get_custom_attribute('non_blocking')
-        settings = { 
-            'application': collection.get_custom_attribute('application'), 
-            'args': collection.get_custom_attribute('args'), 
-            'retro_config': collection.get_custom_attribute('retro_config'), 
-            'retro_core': collection.get_custom_attribute('retro_core'), 
-            'retro_core_info': collection.get_custom_attribute('retro_core_info')  
-        }
-        collection.add_launcher(launcher_addon, settings, non_blocking, True)
-        return
-    
-    if launcher_type == constants.OBJ_LAUNCHER_NVGAMESTREAM:
-        launcher_addon = available_addons['script.akl.nvgamestream'] if 'script.akl.nvgamestream' in available_addons else None 
-        if launcher_addon is None: 
-            logger.warning(f'Could not find launcher addon supporting type "{launcher_type}"') 
-            return
-        non_blocking = collection.get_custom_attribute('non_blocking')
-        settings = { 
+        settings = {
             'application': collection.get_custom_attribute('application'),
-            'args': collection.get_custom_attribute('args'), 
-            'certificates_path': collection.get_custom_attribute('certificates_path'), 
-            'server': collection.get_custom_attribute('server'), 
-            'server_hostname': collection.get_custom_attribute('server_hostname'), 
-            'server_id': collection.get_custom_attribute('server_id'), 
-            'server_uuid': collection.get_custom_attribute('server_uuid')  
+            'args': collection.get_custom_attribute('args'),
+            'retro_config': collection.get_custom_attribute('retro_config'),
+            'retro_core': collection.get_custom_attribute('retro_core'),
+            'retro_core_info': collection.get_custom_attribute('retro_core_info')
         }
         collection.add_launcher(launcher_addon, settings, non_blocking, True)
         return
-    
+
+    if launcher_type == constants.OBJ_LAUNCHER_NVGAMESTREAM:
+        launcher_addon = available_addons['script.akl.nvgamestream'] if 'script.akl.nvgamestream' in available_addons else None
+        if launcher_addon is None:
+            logger.warning(f'Could not find launcher addon supporting type "{launcher_type}"')
+            return
+        non_blocking = collection.get_custom_attribute('non_blocking')
+        settings = {
+            'application': collection.get_custom_attribute('application'),
+            'args': collection.get_custom_attribute('args'),
+            'certificates_path': collection.get_custom_attribute('certificates_path'),
+            'server': collection.get_custom_attribute('server'),
+            'server_hostname': collection.get_custom_attribute('server_hostname'),
+            'server_id': collection.get_custom_attribute('server_id'),
+            'server_uuid': collection.get_custom_attribute('server_uuid')
+        }
+        collection.add_launcher(launcher_addon, settings, non_blocking, True)
+        return
+
     if launcher_type == constants.OBJ_LAUNCHER_STEAM:
         launcher_addon = available_addons['script.akl.steam'] if 'script.akl.steam' in available_addons else None
         if launcher_addon is None:
