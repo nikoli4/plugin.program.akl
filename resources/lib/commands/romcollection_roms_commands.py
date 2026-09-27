@@ -735,6 +735,11 @@ def cmd_execute_all_rulesets(args):
             'starting queued scraping. Cleared wizard scrape state.'
         )
 
+        AppMediator.sync_cmd(
+            'SHOW_AKL_SETUP_COMPLETE',
+            {}
+        )
+
 # --- Remove dead/missing ROMs from collection ---
 @AppMediator.register('REMOVE_DEAD_ROMS_COLLECTION')
 def cmd_remove_dead_roms_collection(args):

@@ -504,10 +504,25 @@ def cmd_first_run_setup(args):
             'FIRST_RUN: Setup complete. Returning to AKL.'
         )
 
-        kodi.notify(
-            kodi.translate(44105)
+        AppMediator.sync_cmd(
+            'SHOW_AKL_SETUP_COMPLETE',
+            {}
         )
 
-        kodi.notify(
-            kodi.translate(44106)
-        )
+
+@AppMediator.register('SHOW_AKL_SETUP_COMPLETE')
+def cmd_show_akl_setup_complete(args):
+    """Show final AKL setup guidance after a completed setup workflow."""
+    logger.info(
+        'FIRST_RUN: Showing final AKL skin setup guidance.'
+    )
+
+    kodi.dialog_OK(
+        kodi.translate(44148),
+        kodi.translate(44104)
+    )
+
+    kodi.dialog_OK(
+        kodi.translate(44149),
+        kodi.translate(44104)
+    )

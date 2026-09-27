@@ -2790,3 +2790,11 @@ msgstr ""
 msgctxt "#44147"
 msgid "Open the Advanced Kodi Launcher Revival settings."
 msgstr ""
+
+msgctxt "#44148"
+msgid "Setup is complete. For the best AKL experience, switch Kodi to Arctic: Zephyr - Reloaded (AKL Edition) under Settings > Interface > Skin."
+msgstr ""
+
+msgctxt "#44149"
+msgid "Already using Arctic: Zephyr - Reloaded? You can export your settings from the original skin and restore them into the AKL Edition to carry over your existing customization."
+msgstr ""

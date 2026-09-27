@@ -560,6 +560,11 @@ def cmd_store_scraped_roms(args) -> bool:
                     kodi.translate(44117)
                 )
 
+                AppMediator.sync_cmd(
+                    'SHOW_AKL_SETUP_COMPLETE',
+                    {}
+                )
+
     if entity_type == constants.OBJ_SOURCE:
         AppMediator.async_cmd(
             'RENDER_SOURCE_VIEW',
