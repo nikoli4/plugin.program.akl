@@ -42,11 +42,6 @@ logger = logging.getLogger(__name__)
 def cmd_scan_addons(args):
     kodi.notify(kodi.translate(40998))
     addon_count = _check_installed_addons()
-    
-    msg = kodi.translate(40963)
-    if addon_count == 0 and kodi.dialog_yesno(msg):
-        xbmc.executebuiltin('InstallAddon(script.akl.defaults)', True)
-        addon_count = _check_installed_addons()
         
     logger.info(f'cmd_scan_addons(): Processed {addon_count} addons')
     kodi.notify(kodi.translate(40999).format(addon_count))

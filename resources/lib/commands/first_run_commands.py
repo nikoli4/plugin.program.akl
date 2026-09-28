@@ -10,6 +10,7 @@ import logging
 import collections
 
 import xbmc
+import xbmcaddon
 
 from akl import settings
 from akl.utils import kodi
@@ -53,6 +54,93 @@ def _get_component_status(addon_id):
         'name': addon.get('name', addon_id),
         'version': addon.get('version', '')
     }
+
+
+def _configure_scraper_credentials(selected_scrapers):
+    """Offer configuration for selected scrapers that require credentials."""
+
+    scraper_credentials = {
+        'script.akl.screenscraper': {
+            'name': 'ScreenScraper',
+            'settings': (
+                'scraper_screenscraper_ssid',
+                'scraper_screenscraper_sspass',
+            ),
+            'message': (
+                'ScreenScraper requires account credentials for authenticated '
+                'scraping.\n\nWould you like to configure ScreenScraper now?'
+            ),
+        },
+        'script.akl.tgdbscraper': {
+            'name': 'TheGamesDB',
+            'settings': (
+                'thegamesdb_apikey',
+            ),
+            'message': (
+                'TheGamesDB requires an API key for scraping.\n\n'
+                'Would you like to configure TheGamesDB now?'
+            ),
+        },
+    }
+
+    for addon_id in selected_scrapers:
+        if addon_id not in scraper_credentials:
+            continue
+
+        status = _get_component_status(addon_id)
+
+        if not status['installed']:
+            logger.warning(
+                'FIRST_RUN: Cannot configure {} because it is not installed.'.format(
+                    addon_id
+                )
+            )
+            continue
+
+        config = scraper_credentials[addon_id]
+
+        try:
+            addon = xbmcaddon.Addon(addon_id)
+
+            missing_settings = any(
+                not addon.getSetting(setting_id).strip()
+                for setting_id in config['settings']
+            )
+
+            if not missing_settings:
+                logger.info(
+                    'FIRST_RUN: {} credentials are already configured.'.format(
+                        config['name']
+                    )
+                )
+                continue
+
+            logger.info(
+                'FIRST_RUN: {} credentials are not configured.'.format(
+                    config['name']
+                )
+            )
+
+            if kodi.dialog_yesno(config['message']):
+                logger.info(
+                    'FIRST_RUN: Opening {} settings.'.format(
+                        config['name']
+                    )
+                )
+                addon.openSettings()
+            else:
+                logger.info(
+                    'FIRST_RUN: {} configuration deferred by user.'.format(
+                        config['name']
+                    )
+                )
+
+        except Exception:
+            logger.exception(
+                'FIRST_RUN: Unable to check or open settings for {}.'.format(
+                    addon_id
+                )
+            )
 
 
 @AppMediator.register(FIRST_RUN_SETUP)
@@ -384,6 +472,8 @@ def cmd_first_run_setup(args):
                     status['version']
                 )
             )
+
+        _configure_scraper_credentials(selected_scrapers)
 
         installed_selected_skins = []
         failed_skins = []
