@@ -602,20 +602,85 @@ def cmd_first_run_setup(args):
 
 @AppMediator.register('SHOW_AKL_SETUP_COMPLETE')
 def cmd_show_akl_setup_complete(args):
-    """Show final AKL setup guidance after a completed setup workflow."""
+    """Offer final skin selection after a completed setup workflow."""
     logger.info(
-        'FIRST_RUN: Showing final AKL skin setup guidance.'
+        'FIRST_RUN: Showing final AKL skin selection.'
     )
 
-    kodi.dialog_OK(
-        kodi.translate(44148),
-        kodi.translate(44104)
+    akl_skin_id = 'skin.arctic.zephyr.akl'
+    akl_skin_status = _get_component_status(akl_skin_id)
+
+    if not akl_skin_status['installed']:
+        logger.info(
+            'FIRST_RUN: AKL Edition skin is not installed. '
+            'Skipping final skin selection.'
+        )
+
+        kodi.dialog_OK(
+            kodi.translate(44148),
+            kodi.translate(44104)
+        )
+        return
+
+    current_skin_response = kodi.jsonrpc_query(
+        'Settings.GetSettingValue',
+        {
+            'setting': 'lookandfeel.skin'
+        }
     )
 
-    # FUTURE: Re-enable when the AKL Edition can directly import compatible
-    # skin and furniture settings from Arctic: Zephyr - Reloaded.
-    #
-    # kodi.dialog_OK(
-    #     kodi.translate(44149),
-    #     kodi.translate(44104)
-    # )
+    logger.info(
+        'FIRST_RUN: Current Kodi skin before final selection: {}'.format(
+            current_skin_response
+        )
+    )
+
+    current_skin = None
+
+    if isinstance(current_skin_response, dict):
+        current_skin = (
+            current_skin_response
+            .get('result', {})
+            .get('value')
+        )
+
+    if current_skin == akl_skin_id:
+        logger.info(
+            'FIRST_RUN: AKL Edition is already the active Kodi skin.'
+        )
+        return
+
+    skin_options = collections.OrderedDict()
+    skin_options[akl_skin_id] = akl_skin_status['name']
+    skin_options['KEEP_CURRENT'] = kodi.translate(44144)
+
+    selected_skin = kodi.OrdDictionaryDialog().select(
+        kodi.translate(44143),
+        skin_options
+    )
+
+    if selected_skin is None or selected_skin == 'KEEP_CURRENT':
+        logger.info(
+            'FIRST_RUN: User chose to keep the current Kodi skin.'
+        )
+        return
+
+    logger.info(
+        'FIRST_RUN: Changing active Kodi skin to {}.'.format(
+            selected_skin
+        )
+    )
+
+    set_skin_response = kodi.jsonrpc_query(
+        'Settings.SetSettingValue',
+        {
+            'setting': 'lookandfeel.skin',
+            'value': selected_skin
+        }
+    )
+
+    logger.info(
+        'FIRST_RUN: Kodi skin change response: {}'.format(
+            set_skin_response
+        )
+    )
