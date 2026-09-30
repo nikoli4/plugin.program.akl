@@ -41,8 +41,6 @@ def _filter_platforms(search_term):
 
 logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
 
 SETUP_WIZARD = 'SETUP_WIZARD'
 PROCESS_SCRAPE_QUEUE = 'PROCESS_SCRAPE_QUEUE'

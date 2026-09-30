@@ -130,11 +130,6 @@ def cmd_set_launcher_args(args) -> bool:
             entity_id
         )
 
-        kodi.set_windowprop(
-            'AKL.SetupWizard.ScannerSourceID',
-            entity_id
-        )
-
         logger.info(
             f'SETUP_WIZARD: Set scanner continuation marker for '
             f'source "{entity_id}".'
@@ -201,20 +196,20 @@ def cmd_set_scanner_settings(args) -> bool:
         )
 
         if setup_wizard_source_id == source_id:
-            kodi.clear_windowprops([
-                'AKL.SetupWizard.ScannerSourceID',
-                'AKL.SetupWizard.CategoryID'
-            ])
-
             logger.info(
                 f'SETUP_WIZARD: ROM scan declined for source '
-                f'"{source_id}". Wizard continuation cleared.'
+                f'"{source_id}". Continuing setup without scanning.'
             )
 
-        AppMediator.async_cmd(
-            'SOURCE_MANAGE_ROMS',
-            {'source_id': source_id}
-        )
+            cmd_store_scanned_roms({
+                'source_id': source_id,
+                'roms': []
+            })
+        else:
+            AppMediator.async_cmd(
+                'SOURCE_MANAGE_ROMS',
+                {'source_id': source_id}
+            )
 
     return True
 

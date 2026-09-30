@@ -2798,3 +2798,7 @@ msgstr ""
 msgctxt "#44149"
 msgid "Already using Arctic: Zephyr - Reloaded? You can export your settings from the original skin and restore them into the AKL Edition to carry over your existing customization."
 msgstr ""
+
+msgctxt "#44150"
+msgid "Scrape System"
+msgstr ""

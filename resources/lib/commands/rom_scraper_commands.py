@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 SCRAPE_ROMS = 'SCRAPE_ROMS'
 SCRAPE_ROMS_WITH_SETTINGS = 'SCRAPE_ROMS_WITH_SETTINGS'
 SCRAPE_SYSTEM = 'SCRAPE_SYSTEM'
+SCRAPE_SYSTEM_WITH_SETTINGS = 'SCRAPE_SYSTEM_WITH_SETTINGS'
 PREPARE_WIZARD_GAME_SCRAPE = 'PREPARE_WIZARD_GAME_SCRAPE'
 PREPARE_WIZARD_SYSTEM_SCRAPE = 'PREPARE_WIZARD_SYSTEM_SCRAPE'
 SCRAPE_PREPARED_WIZARD_GAMES = 'SCRAPE_PREPARED_WIZARD_GAMES'
@@ -253,6 +254,21 @@ def cmd_scrape_system(args):
                 selected_addon.get_supported_metadata()
             )
 
+            args['scraper_settings'] = scraper_settings
+            args['scraper_id'] = selected_addon.addon.get_id()
+            args['scraper_supported_metadata'] = (
+                selected_addon.get_supported_metadata()
+            )
+            args['scraper_supported_assets'] = (
+                selected_addon.get_supported_assets()
+            )
+
+            AppMediator.sync_cmd(
+                SCRAPE_SYSTEM_WITH_SETTINGS,
+                args
+            )
+            return
+
         selected_addon.set_scraper_settings(
             scraper_settings
         )
@@ -269,6 +285,135 @@ def cmd_scrape_system(args):
             collection.get_name(),
             system_asset_paths
         )
+
+@AppMediator.register(SCRAPE_SYSTEM_WITH_SETTINGS)
+def cmd_scrape_system_with_settings(args):
+    romcollection_id: str = args.get('romcollection_id')
+    scraper_id: str = args.get('scraper_id')
+    scraper_settings: ScraperSettings = args.get(
+        'scraper_settings',
+        ScraperSettings.from_addon_settings()
+    )
+
+    uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
+    with uow:
+        addon_repository = AklAddonRepository(uow)
+        collection_repository = ROMCollectionRepository(uow)
+
+        collection = collection_repository.find_romcollection(
+            romcollection_id
+        )
+        addon = addon_repository.find(scraper_id)
+
+        if collection is None or addon is None:
+            logger.error(
+                f'SYSTEM_SCRAPE: Unable to configure system scrape for '
+                f'collection "{romcollection_id}".'
+            )
+            return
+
+        selected_addon = ScraperAddon(
+            addon,
+            scraper_settings
+        )
+
+        assets_to_scrape = g_assetFactory.get_asset_list_by_IDs(
+            scraper_settings.asset_IDs_to_scrape
+        )
+        metadata_to_scrape = [
+            constants.METADATA_DESCRIPTIONS[meta_id]
+            for meta_id in scraper_settings.metadata_IDs_to_scrape
+        ]
+
+        options = collections.OrderedDict()
+
+        options['SCRAPER_METADATA_POLICY'] = (
+            kodi.translate(41115).format(
+                kodi.translate(scraper_settings.scrape_metadata_policy)
+            )
+        )
+        options['SCRAPER_ASSET_POLICY'] = (
+            kodi.translate(41116).format(
+                kodi.translate(scraper_settings.scrape_assets_policy)
+            )
+        )
+        options['SCRAPER_SEARCH_TERM_MODE'] = (
+            kodi.translate(41117).format(
+                kodi.translate(scraper_settings.search_term_mode)
+            )
+        )
+        options['SCRAPER_GAME_SELECTION_MODE'] = (
+            kodi.translate(41118).format(
+                kodi.translate(scraper_settings.game_selection_mode)
+            )
+        )
+        options['SCRAPER_ASSET_SELECTION_MODE'] = (
+            kodi.translate(41119).format(
+                kodi.translate(scraper_settings.asset_selection_mode)
+            )
+        )
+        options['SCRAPER_META_TO_SCRAPE'] = (
+            kodi.translate(42030).format(
+                ', '.join(metadata_to_scrape)
+            )
+        )
+        options['SCRAPER_ASSETS_TO_SCRAPE'] = (
+            kodi.translate(42031).format(
+                ', '.join([a.plural for a in assets_to_scrape])
+            )
+        )
+        options['SCRAPER_OVERWRITE_META_MODE'] = (
+            kodi.translate(42032).format(
+                kodi.translate(42035)
+                if scraper_settings.overwrite_existing_meta
+                else kodi.translate(42036)
+            )
+        )
+        options['SCRAPER_OVERWRITE_ASSETS_MODE'] = (
+            kodi.translate(42033).format(
+                kodi.translate(42035)
+                if scraper_settings.overwrite_existing_assets
+                else kodi.translate(42036)
+            )
+        )
+        options['SCRAPE'] = kodi.translate(40881)
+
+        dialog_title = (
+            f'Scrape System - {collection.get_name()} '
+            f'({selected_addon.get_name()})'
+        )
+
+        selected_option = kodi.OrdDictionaryDialog().select(
+            dialog_title,
+            options,
+            preselect='SCRAPE'
+        )
+
+        if selected_option is None:
+            logger.info(
+                'SYSTEM_SCRAPE: System scrape settings cancelled.'
+            )
+            return
+
+        if selected_option != 'SCRAPE':
+            args['ret_cmd'] = SCRAPE_SYSTEM_WITH_SETTINGS
+            AppMediator.sync_cmd(
+                selected_option,
+                args
+            )
+            return
+
+    # Re-enter SCRAPE_SYSTEM as a prepared operation so it executes rather
+    # than reopening the manual settings screen.
+    args['prepared_scraper_id'] = scraper_id
+    args['prepared_scraper_settings'] = (
+        scraper_settings.get_data_dic()
+    )
+
+    AppMediator.sync_cmd(
+        SCRAPE_SYSTEM,
+        args
+    )
 
 @AppMediator.register(PREPARE_WIZARD_SYSTEM_SCRAPE)
 def cmd_prepare_wizard_system_scrape(args):
@@ -580,6 +725,8 @@ def cmd_scrape_romcollection(args):
                     f'marker after cancellation for collection '
                     f'"{romcollection_id}".'
                 )
+
+                return
 
             AppMediator.sync_cmd(
                 'ROMCOLLECTION_MANAGE_ROMS',

@@ -121,6 +121,7 @@ def cmd_edit_romcollection(args):
     options = collections.OrderedDict()
     options[ROMCOLLECTION_EDIT_METADATA] = kodi.translate(40853)
     options[ROMCOLLECTION_EDIT_ASSETS] = kodi.translate(40854)
+    options['SCRAPE_SYSTEM'] = kodi.translate(44150)
     if romcollection.has_launchers():
         options['EDIT_ROMCOLLECTION_LAUNCHERS'] = kodi.translate(42016)
     else:

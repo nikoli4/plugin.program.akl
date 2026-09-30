@@ -612,7 +612,10 @@ def cmd_show_akl_setup_complete(args):
         kodi.translate(44104)
     )
 
-    kodi.dialog_OK(
-        kodi.translate(44149),
-        kodi.translate(44104)
-    )
+    # FUTURE: Re-enable when the AKL Edition can directly import compatible
+    # skin and furniture settings from Arctic: Zephyr - Reloaded.
+    #
+    # kodi.dialog_OK(
+    #     kodi.translate(44149),
+    #     kodi.translate(44104)
+    # )
