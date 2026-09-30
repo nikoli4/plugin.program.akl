@@ -1,3 +1,9 @@
+## 1.6.5
+
+- Updated the AKL module dependency to version 1.3.1.
+- Updated the development dependency to script.module.akl 1.3.1.
+- Maintenance release; no functional code changes.
+
 ## 1.6.4
 
 - Improved the first-run setup wizard and system setup workflow.
