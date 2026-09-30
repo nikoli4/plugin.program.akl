@@ -1,3 +1,11 @@
+## 1.6.4
+
+- Improved the first-run setup wizard and system setup workflow.
+- Added support for rescraping an entire system after setup.
+- Added a Scrape System management action.
+- Added an optional prompt to install the Arctic: Zephyr - Reloaded (AKL Edition) skin after first-run setup.
+- Improved first-run skin guidance and setup flow.
+
 ## 1.6.3
 
 - Updated Advanced Kodi Launcher Revival icon and fanart assets.
