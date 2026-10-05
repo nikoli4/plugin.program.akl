@@ -173,7 +173,7 @@ msgid "Launch ROM directly by default on item action"
 msgstr "settings.xml"
 
 msgctxt "#40417"
-msgid "Hide rendering notifications"
+msgid "Hide Rendering Notifications"
 msgstr "settings.xml"
 
 ############################
@@ -699,7 +699,7 @@ msgid "Edit Category"
 msgstr ""
 
 msgctxt "#40888"
-msgid "Add"
+msgid "Add..."
 msgstr ""
 
 # TODO: obsolete
@@ -1332,7 +1332,7 @@ msgid "File '{0}' has {1} bytes and it is very big. Are you sure this is the cor
 msgstr "" 
 
 msgctxt "#41071"
-msgid "Delete {0} files marked as redundant?\nWarning! This will actually delete the files!\m Backup filesnow if needed."
+msgid "Delete {0} files marked as redundant?\nWarning! This will actually delete the files!\nBackup files now if needed."
 msgstr "" 
 
 msgctxt "#41072"
@@ -2801,4 +2801,84 @@ msgstr ""
 
 msgctxt "#44150"
 msgid "Scrape System"
+msgstr ""
+
+msgctxt "#44151"
+msgid "Update ROM Collection"
+msgstr ""
+
+msgctxt "#44152"
+msgid "Scrape Systems..."
+msgstr ""
+
+msgctxt "#44153"
+msgid "Select systems to scrape"
+msgstr ""
+
+msgctxt "#44154"
+msgid "No ROM collections are available to scrape."
+msgstr ""
+
+msgctxt "#44155"
+msgid "Bulk system scrape completed."
+msgstr ""
+
+msgctxt "#44156"
+msgid "Bulk system scrape could not continue."
+msgstr ""
+
+msgctxt "#44157"
+msgid "System scrape cannot determine a common artwork root for this collection."
+msgstr ""
+
+msgctxt "#44158"
+msgid "Select System Scraper"
+msgstr ""
+
+msgctxt "#44159"
+msgid "Scrape System - {0} ({1})"
+msgstr ""
+
+msgctxt "#44160"
+msgid "Select System Scraper - {0}"
+msgstr ""
+
+msgctxt "#44161"
+msgid "Play Random Game"
+msgstr ""
+
+msgctxt "#44162"
+msgid "No games are available to launch."
+msgstr ""
+
+msgctxt "#44163"
+msgid "Play Random Game from Collection"
+msgstr ""
+
+msgctxt "#44164"
+msgid "Hide Sources"
+msgstr ""
+
+msgctxt "#44165"
+msgid "Hide Launchers"
+msgstr ""
+
+msgctxt "#44166"
+msgid "Important: Read Before Hiding Utilities"
+msgstr ""
+
+msgctxt "#44167"
+msgid "Hiding Utilities"
+msgstr ""
+
+msgctxt "#44168"
+msgid "Hiding Utilities also removes access to AKL Settings. To restore Utilities or other hidden menu items, open the Advanced Kodi Launcher Revival add-on information page and select Configure."
+msgstr ""
+
+msgctxt "#44169"
+msgid "Important: About the Default Artwork Directory"
+msgstr ""
+
+msgctxt "#44170"
+msgid "Select the parent directory where AKL will store game artwork. When a new system is created, AKL automatically creates a folder named for that system inside this directory, along with the required artwork subfolders. When a default artwork directory is configured, you will not be asked to select an artwork directory each time you create a new system."
 msgstr ""

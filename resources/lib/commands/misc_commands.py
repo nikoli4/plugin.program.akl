@@ -42,6 +42,13 @@ def cmd_open_settings(args):
     logger.info('Opening Advanced Kodi Launcher Revival settings.')
     xbmcaddon.Addon('plugin.program.akl').openSettings()
 
+@AppMediator.register('HIDE_UTILITIES_INFO')
+def cmd_hide_utilities_info(args):
+    kodi.dialog_OK(kodi.translate(44168))
+
+@AppMediator.register('DEFAULT_ARTWORK_ROOT_INFO')
+def cmd_default_artwork_root_info(args):
+    kodi.dialog_OK(kodi.translate(44170))
 
 @AppMediator.register('IMPORT_LAUNCHERS')
 def cmd_execute_import_launchers(args):

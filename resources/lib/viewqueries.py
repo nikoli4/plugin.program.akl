@@ -56,73 +56,35 @@ def qry_get_root_items():
         }
         kodi.notify(kodi.translate(40959))
         AppMediator.async_cmd('RENDER_VIEWS', {'force': True})
+
+    # Apply the current root-item visibility settings at display time.
+    # The rendered root.json may contain these virtual items even when the
+    # user has subsequently chosen to hide them.
+    hidden_root_items = set()
+
+    if settings.getSettingAsBool('display_hide_vcategories'):
+        hidden_root_items.add('vcategories')
+
+    if settings.getSettingAsBool('display_hide_favs'):
+        hidden_root_items.add('favourites')
+
+    if settings.getSettingAsBool('display_hide_recent'):
+        hidden_root_items.add('recently_played')
+
+    if settings.getSettingAsBool('display_hide_mostplayed'):
+        hidden_root_items.add('most_played')
+
+    if hidden_root_items:
+        container['items'] = [
+            item for item in container.get('items', [])
+            if item.get('id') not in hidden_root_items
+        ]
     
     listitem_fanart = globals.g_PATHS.FANART_FILE_PATH.getPath()
 
-    listitem_name = kodi.translate(40914)
-    container['items'].append({
-        'name': listitem_name,
-        'url': globals.router.url_for_path('sources'),
-        'is_folder': True,
-        'type': 'video',
-        'info': {
-            'title': listitem_name,
-            'plot': kodi.translate(44032),
-            'overlay': 4
-        },
-        'art': {
-            'fanart': listitem_fanart,
-            'icon': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Sources_icon.png').getPath(),
-            'poster': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Sources_poster.png').getPath()
-        },
-        'properties': {
-            'obj_type': constants.OBJ_SOURCE
-        }
-    })
+    # Keep the optional root-menu items below the ROM collections and
+    # display them alphabetically: Global Reports, Launchers, Sources, Utilities.
 
-    listitem_name = kodi.translate(40920)
-    container['items'].append({
-        'name': listitem_name,
-        'url': globals.router.url_for_path('launchers'),
-        'is_folder': True,
-        'type': 'video',
-        'info': {
-            'title': listitem_name,
-            'plot': kodi.translate(44033),
-            'overlay': 4
-        },
-        'art': {
-            'fanart': listitem_fanart,
-            'icon': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Launchers_icon.png').getPath(),
-            'poster': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Launchers_poster.png').getPath()
-        },
-        'properties': {
-            'obj_type': constants.OBJ_LAUNCHER
-        }
-    })
-    
-    if not settings.getSettingAsBool('display_hide_utilities'):
-        listitem_name = kodi.translate(40897)
-        container['items'].append({
-            'name': listitem_name,
-            'url': globals.router.url_for_path('utilities'),
-            'is_folder': True,
-            'type': 'video',
-            'info': {
-                'title': listitem_name,
-                'plot': kodi.translate(44001),
-                'overlay': 4
-            },
-            'art': {
-                'fanart': listitem_fanart,
-                'icon': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Utilities_icon.png').getPath(),
-                'poster': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Utilities_poster.png').getPath()
-            },
-            'properties': {
-                'obj_type': constants.OBJ_NONE
-            }
-        })
-        
     if not settings.getSettingAsBool('display_hide_g_reports'):
         listitem_name = kodi.translate(40898)
         container['items'].append({
@@ -139,6 +101,72 @@ def qry_get_root_items():
                 'fanart': listitem_fanart,
                 'icon': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Global_Reports_icon.png').getPath(),
                 'poster': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Global_Reports_poster.png').getPath()
+            },
+            'properties': {
+                'obj_type': constants.OBJ_NONE
+            }
+        })
+
+    if not settings.getSettingAsBool('display_hide_launchers'):
+        listitem_name = kodi.translate(40920)
+        container['items'].append({
+            'name': listitem_name,
+            'url': globals.router.url_for_path('launchers'),
+            'is_folder': True,
+            'type': 'video',
+            'info': {
+                'title': listitem_name,
+                'plot': kodi.translate(44033),
+                'overlay': 4
+            },
+            'art': {
+                'fanart': listitem_fanart,
+                'icon': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Launchers_icon.png').getPath(),
+                'poster': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Launchers_poster.png').getPath()
+            },
+            'properties': {
+                'obj_type': constants.OBJ_LAUNCHER
+            }
+        })
+
+    if not settings.getSettingAsBool('display_hide_sources'):
+        listitem_name = kodi.translate(40914)
+        container['items'].append({
+            'name': listitem_name,
+            'url': globals.router.url_for_path('sources'),
+            'is_folder': True,
+            'type': 'video',
+            'info': {
+                'title': listitem_name,
+                'plot': kodi.translate(44032),
+                'overlay': 4
+            },
+            'art': {
+                'fanart': listitem_fanart,
+                'icon': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Sources_icon.png').getPath(),
+                'poster': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Sources_poster.png').getPath()
+            },
+            'properties': {
+                'obj_type': constants.OBJ_SOURCE
+            }
+        })
+
+    if not settings.getSettingAsBool('display_hide_utilities'):
+        listitem_name = kodi.translate(40897)
+        container['items'].append({
+            'name': listitem_name,
+            'url': globals.router.url_for_path('utilities'),
+            'is_folder': True,
+            'type': 'video',
+            'info': {
+                'title': listitem_name,
+                'plot': kodi.translate(44001),
+                'overlay': 4
+            },
+            'art': {
+                'fanart': listitem_fanart,
+                'icon': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Utilities_icon.png').getPath(),
+                'poster': globals.g_PATHS.ADDON_CODE_DIR.pjoin('media/theme/Utilities_poster.png').getPath()
             },
             'properties': {
                 'obj_type': constants.OBJ_NONE
@@ -697,8 +725,26 @@ def qry_container_context_menu_items(container_data) -> typing.List[typing.Tuple
     container_parentid = container_data['parent_id'] if 'parent_id' in container_data else ''
     
     is_root: bool = container_data['id'] == ''
+    is_addon_root: bool = (
+        container_type == constants.OBJ_CATEGORY and
+        (
+            container_id == constants.VCATEGORY_ADDONROOT_ID or
+            container_id == ''
+        )
+    )
+
     commands = []
-       
+
+    if is_addon_root:
+        commands.append((
+            kodi.translate(44152),
+            _context_menu_url_for('/execute/command/scrape_systems')
+        ))
+        commands.append((
+            kodi.translate(44161),
+            _context_menu_url_for('/execute/command/launch_random_rom')
+        ))
+
     if container_type == constants.OBJ_SOURCE and is_root:
         commands.append((kodi.translate(40916), _context_menu_url_for('/execute/command/add_source')))
         
@@ -706,31 +752,15 @@ def qry_container_context_menu_items(container_data) -> typing.List[typing.Tuple
         commands.append((kodi.translate(40917), _context_menu_url_for('/execute/command/add_launcher')))
         
     if container_type == constants.OBJ_ROMCOLLECTION:
+        commands.append((
+            kodi.translate(44163),
+            _context_menu_url_for(
+                '/execute/command/launch_random_rom',
+                {'romcollection_id': container_id}
+            )
+        ))
         commands.append((kodi.translate(40894), _context_menu_url_for(f'/collection/{container_id}/search')))
-        commands.append((kodi.translate(40923), _context_menu_url_for('execute/command/render_romcollection_view', {
-                        'romcollection_id': container_id,
-                        'name': container_name})))
     
-    if container_type == constants.OBJ_CATEGORY:
-        commands.append((kodi.translate(40923), _context_menu_url_for('execute/command/render_category_view', {
-                        'category_id': container_id,
-                        'name': container_name})))
-        
-    if container_type == constants.OBJ_SOURCE:
-        commands.append((kodi.translate(40923), _context_menu_url_for('execute/command/render_source_view', {
-                        'source_id': container_id,
-                        'name': container_name})))
-        
-    if container_type == constants.OBJ_CATEGORY_VIRTUAL and not is_root:
-        commands.append((kodi.translate(40923), _context_menu_url_for('execute/command/render_vcategory_view', {
-                        'vcategory_id': container_id,
-                        'name': container_name})))
-    
-    if container_type == constants.OBJ_COLLECTION_VIRTUAL:
-        commands.append((kodi.translate(40923), _context_menu_url_for('execute/command/render_vcategory_view', {
-                        'vcategory_id': container_parentid,
-                        'name': container_name})))
-
     return commands
 
 
@@ -771,11 +801,8 @@ def qry_listitem_context_menu_items(list_item_data, container_data) -> typing.Li
         commands.append((kodi.translate(40888), _context_menu_url_for(f'/add/{item_id}/in/{container_id}')))
         
     if is_romcollection:
-        commands.append((kodi.translate(40891), _context_menu_url_for(f'/romcollection/view/{item_id}')))
         commands.append((kodi.translate(40892), _context_menu_url_for(f'/romcollection/edit/{item_id}')))
-        commands.append((kodi.translate(40922), _context_menu_url_for('/execute/command/execute_all_rulesets', {
-            'romcollection_id': item_id
-        })))
+
     if is_source:
         if item_id and len(item_id) > 0:
             commands.append((kodi.translate(40915), _context_menu_url_for(f'/source/edit/{item_id}')))

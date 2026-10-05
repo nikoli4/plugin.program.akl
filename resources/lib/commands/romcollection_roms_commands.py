@@ -56,6 +56,7 @@ def cmd_manage_roms(args):
     has_roms = romcollection.has_roms()
 
     options = collections.OrderedDict()
+    options['UPDATE_ROMCOLLECTION'] = kodi.translate(44151)
     options['SET_ROMS_DEFAULT_ARTWORK'] = kodi.translate(42044)
     options['IMPORT_ROMS'] = kodi.translate(42082)
     if has_roms:
@@ -76,6 +77,70 @@ def cmd_manage_roms(args):
     # >> Execute subcommand. May be atomic, maybe a submenu.
     logger.debug('ROMCOLLECTION_MANAGE_ROMS: cmd_manage_roms() Selected {}'.format(selected_option))
     AppMediator.sync_cmd(selected_option, args)
+
+# --- Scan collection sources and then import newly discovered ROMs by ruleset ---
+@AppMediator.register('UPDATE_ROMCOLLECTION')
+def cmd_update_romcollection(args):
+    romcollection_id: str = args['romcollection_id'] if 'romcollection_id' in args else None
+
+    if romcollection_id is None:
+        logger.warning('UPDATE_ROMCOLLECTION: No ROM collection id supplied.')
+        kodi.notify_warn(kodi.translate(40951))
+        return
+
+    uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
+    with uow:
+        source_repository = SourcesRepository(uow)
+
+        # Use AKL's existing collection/source relationship. This is also used
+        # by the collection-level ROM scraping workflow.
+        sources = list(
+            source_repository.find_sources_by_collection(romcollection_id)
+        )
+
+        # Preserve repository order while protecting against duplicate sources.
+        source_ids = []
+        for source in sources:
+            source_id = source.get_id()
+            if source_id and source_id not in source_ids:
+                source_ids.append(source_id)
+
+    if not source_ids:
+        logger.warning(
+            'UPDATE_ROMCOLLECTION: No sources available for collection "{}".'.format(
+                romcollection_id
+            )
+        )
+        kodi.notify_warn('No ROM sources are available to update this collection.')
+        return
+
+    logger.info(
+        'UPDATE_ROMCOLLECTION: Starting update for collection "{}" using {} source(s).'.format(
+            romcollection_id,
+            len(source_ids)
+        )
+    )
+
+    # The external ROM scanner is asynchronous. Store enough state for
+    # cmd_store_scanned_roms() to continue with the next source when the
+    # current scan completes.
+    kodi.set_windowprop(
+        'AKL.UpdateCollection.CollectionID',
+        romcollection_id
+    )
+    kodi.set_windowprop(
+        'AKL.UpdateCollection.SourceQueue',
+        json.dumps(source_ids)
+    )
+
+    # Start the first source. The scanner callback will advance the queue.
+    AppMediator.async_cmd(
+        'SCAN_ROMS',
+        {
+            'source_id': source_ids[0],
+            'force': True
+        }
+    )
 
 
 # --- Choose default ROMs assets/artwork ---
@@ -739,6 +804,61 @@ def cmd_execute_all_rulesets(args):
             'SHOW_AKL_SETUP_COMPLETE',
             {}
         )
+
+# --- Select multiple ROM collections for bulk scraping ---
+@AppMediator.register('SCRAPE_SYSTEMS')
+def cmd_scrape_systems(args):
+    logger.info('SCRAPE_SYSTEMS: Starting bulk system scrape selection.')
+
+    collection_options = collections.OrderedDict()
+
+    uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
+    with uow:
+        collection_repository = ROMCollectionRepository(uow)
+
+        for romcollection in collection_repository.find_all_romcollections():
+            collection_options[romcollection.get_id()] = romcollection.get_name()
+
+    if not collection_options:
+        logger.warning('SCRAPE_SYSTEMS: No ROM collections are available.')
+        kodi.notify_warn(kodi.translate(44154))
+        return
+
+    selected_collections = kodi.MultiSelectDialog().select(
+        kodi.translate(44153),
+        collection_options,
+        preselected=list(collection_options.keys())
+    )
+
+    if selected_collections is None:
+        logger.info('SCRAPE_SYSTEMS: User cancelled system selection.')
+        return
+
+    if not selected_collections:
+        logger.info('SCRAPE_SYSTEMS: User selected no systems.')
+        return
+
+    logger.info(
+        f'SCRAPE_SYSTEMS: User selected '
+        f'{len(selected_collections)} collection(s): '
+        f'{selected_collections}'
+    )
+
+    first_collection_id = selected_collections[0]
+
+    logger.info(
+        f'SCRAPE_SYSTEMS: Starting bulk scrape configuration using '
+        f'collection "{first_collection_id}".'
+    )
+
+    AppMediator.async_cmd(
+        'SCRAPE_SYSTEM',
+        {
+            'romcollection_id': first_collection_id,
+            'bulk_system_scrape_queue': selected_collections
+        }
+    )
+
 
 # --- Remove dead/missing ROMs from collection ---
 @AppMediator.register('REMOVE_DEAD_ROMS_COLLECTION')

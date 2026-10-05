@@ -1274,6 +1274,16 @@ class ROMsRepository(object):
         self._uow = uow
         self.logger = logging.getLogger(__name__)
 
+    def find_all_rom_ids(self) -> typing.List[str]:
+        self._uow.execute(qry.SELECT_ALL_ROM_IDS)
+        result_set = self._uow.result_set()
+
+        return [
+            row['id']
+            for row in result_set
+            if row.get('id')
+        ]
+
     def find_root_roms(self) -> typing.Iterator[ROM]:
         self._uow.execute(qry.SELECT_ROMS_BY_ROOT_CATEGORY)
         result_set = self._uow.result_set()

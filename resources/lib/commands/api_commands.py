@@ -223,7 +223,29 @@ def cmd_store_scanned_roms(args) -> bool:
     new_roms: list = args['roms'] if 'roms' in args else None
 
     if new_roms is None:
-        AppMediator.async_cmd('SOURCE_MANAGE_ROMS', {'source_id': source_id})
+        update_collection_id = kodi.get_windowprop(
+            'AKL.UpdateCollection.CollectionID'
+        )
+
+        if update_collection_id:
+            logger.warning(
+                'UPDATE_ROMCOLLECTION: Scan did not return ROM data. '
+                'Cancelling collection update.'
+            )
+            kodi.clear_windowprops(
+                [
+                    'CollectionID',
+                    'SourceQueue'
+                ],
+                prefix='AKL.UpdateCollection.'
+            )
+            kodi.notify_warn('ROM collection update was not completed.')
+            return False
+
+        AppMediator.async_cmd(
+            'SOURCE_MANAGE_ROMS',
+            {'source_id': source_id}
+        )
         return
 
     uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
@@ -251,6 +273,91 @@ def cmd_store_scanned_roms(args) -> bool:
         'RENDER_VCATEGORY_VIEW',
         {'vcategory_id': constants.VCATEGORY_TITLE_ID}
     )
+
+    # --- Update ROM Collection continuation ---
+    update_collection_id = kodi.get_windowprop(
+        'AKL.UpdateCollection.CollectionID'
+    )
+    update_source_queue_json = kodi.get_windowprop(
+        'AKL.UpdateCollection.SourceQueue'
+    )
+
+    if update_collection_id and update_source_queue_json:
+        try:
+            update_source_queue = json.loads(update_source_queue_json)
+        except (TypeError, ValueError):
+            logger.exception(
+                'UPDATE_ROMCOLLECTION: Could not decode source queue.'
+            )
+            kodi.clear_windowprops(
+                [
+                    'CollectionID',
+                    'SourceQueue'
+                ],
+                prefix='AKL.UpdateCollection.'
+            )
+            return False
+
+        # Only consume the callback if it belongs to the source currently
+        # expected by the Update ROM Collection workflow.
+        if update_source_queue and update_source_queue[0] == source_id:
+            completed_source_id = update_source_queue.pop(0)
+
+            logger.info(
+                'UPDATE_ROMCOLLECTION: Completed source "{}". {} source(s) remaining.'.format(
+                    completed_source_id,
+                    len(update_source_queue)
+                )
+            )
+
+            if update_source_queue:
+                # Save the shortened queue before launching the next scanner.
+                kodi.set_windowprop(
+                    'AKL.UpdateCollection.SourceQueue',
+                    json.dumps(update_source_queue)
+                )
+
+                next_source_id = update_source_queue[0]
+
+                logger.info(
+                    'UPDATE_ROMCOLLECTION: Scanning next source "{}".'.format(
+                        next_source_id
+                    )
+                )
+
+                AppMediator.async_cmd(
+                    'SCAN_ROMS',
+                    {
+                        'source_id': next_source_id,
+                        'force': True
+                    }
+                )
+                return True
+
+            # All required sources have completed. Clear continuation state
+            # before importing so a later scan cannot accidentally resume it.
+            kodi.clear_windowprops(
+                [
+                    'CollectionID',
+                    'SourceQueue'
+                ],
+                prefix='AKL.UpdateCollection.'
+            )
+
+            logger.info(
+                'UPDATE_ROMCOLLECTION: All source scans completed. '
+                'Executing import rulesets for collection "{}".'.format(
+                    update_collection_id
+                )
+            )
+
+            AppMediator.async_cmd(
+                'EXECUTE_ALL_RULESETS',
+                {
+                    'romcollection_id': update_collection_id
+                }
+            )
+            return True
 
     setup_wizard_source_id = kodi.get_windowprop(
         'AKL.SetupWizard.ScannerSourceID'
@@ -704,6 +811,25 @@ def cmd_store_scraped_system(args) -> bool:
             'SCRAPE_PREPARED_WIZARD_GAMES',
             {'romcollection_id': romcollection_id}
         )
+        
+    bulk_collection_id = kodi.get_windowprop(
+        'AKL.BulkSystemScrape.CurrentCollectionID'
+    )
+
+    if bulk_collection_id == romcollection_id:
+        logger.info(
+            f'BULK_SYSTEM_SCRAPE: System scrape completed for collection '
+            f'"{romcollection_id}".'
+        )
+
+        kodi.clear_windowprops([
+            'AKL.BulkSystemScrape.CurrentCollectionID'
+        ])
+
+        AppMediator.async_cmd(
+            'PROCESS_BULK_SYSTEM_SCRAPE_QUEUE',
+            {}
+        )
 
     return True
 
@@ -776,3 +902,5 @@ def cmd_store_scraped_single_rom(args) -> bool:
     )
 
     return True
+
+

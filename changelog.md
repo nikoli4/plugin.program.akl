@@ -1,3 +1,20 @@
+## 1.7.0
+
+- Updated the Advanced Kodi Launcher Library Module dependency to version 1.4.0.
+- Added Update ROM Collection to scan all collection sources and import newly discovered games.
+- Added bulk system scraping with multi-select support.
+- Added system scraping support for collections with multiple sources sharing the same artwork directory.
+- Added Random Game actions for the full game library and individual collections.
+- Added options to hide Sources and Launchers from the AKL root menu.
+- Improved root menu organization and customization.
+- Added a warning explaining how to restore access to AKL settings when Utilities is hidden.
+- Improved default artwork directory handling when creating new systems.
+- Improved first-run guidance for the default artwork directory.
+- Added additional artwork properties for improved AKL skin integration, including standard thumb artwork and collection controller artwork.
+- Improved ROM collection update, scraping, and view refresh behavior.
+- Cleaned up redundant and obsolete context-menu actions.
+- Improved labels, prompts, warnings, and general interface text.
+
 ## 1.6.5
 
 - Updated the AKL module dependency to version 1.3.1.

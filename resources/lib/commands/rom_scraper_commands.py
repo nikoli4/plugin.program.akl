@@ -42,6 +42,122 @@ SCRAPE_SYSTEM_WITH_SETTINGS = 'SCRAPE_SYSTEM_WITH_SETTINGS'
 PREPARE_WIZARD_GAME_SCRAPE = 'PREPARE_WIZARD_GAME_SCRAPE'
 PREPARE_WIZARD_SYSTEM_SCRAPE = 'PREPARE_WIZARD_SYSTEM_SCRAPE'
 SCRAPE_PREPARED_WIZARD_GAMES = 'SCRAPE_PREPARED_WIZARD_GAMES'
+PROCESS_BULK_SYSTEM_SCRAPE_QUEUE = 'PROCESS_BULK_SYSTEM_SCRAPE_QUEUE'
+
+@AppMediator.register(PROCESS_BULK_SYSTEM_SCRAPE_QUEUE)
+def cmd_process_bulk_system_scrape_queue(args):
+    queue_json = kodi.get_windowprop(
+        'AKL.BulkSystemScrape.Queue'
+    )
+
+    scraper_id = kodi.get_windowprop(
+        'AKL.BulkSystemScrape.ScraperID'
+    )
+
+    scraper_settings_json = kodi.get_windowprop(
+        'AKL.BulkSystemScrape.ScraperSettings'
+    )
+
+    try:
+        collection_ids = json.loads(queue_json) if queue_json else []
+    except (TypeError, ValueError):
+        logger.error(
+            'BULK_SYSTEM_SCRAPE: Invalid collection queue. '
+            'Cancelling bulk system scrape.'
+        )
+        collection_ids = []
+
+    if not collection_ids:
+        logger.info(
+            'BULK_SYSTEM_SCRAPE: All queued system scrapes completed.'
+        )
+
+        kodi.clear_windowprops(
+            [
+                'Queue',
+                'ScraperID',
+                'ScraperSettings',
+                'CurrentCollectionID'
+            ],
+            prefix='AKL.BulkSystemScrape.'
+        )
+
+        kodi.notify(
+            kodi.translate(44155)
+        )
+        return
+
+    if not scraper_id or not scraper_settings_json:
+        logger.error(
+            'BULK_SYSTEM_SCRAPE: Missing prepared scraper or settings. '
+            'Cancelling bulk system scrape.'
+        )
+
+        kodi.clear_windowprops(
+            [
+                'Queue',
+                'ScraperID',
+                'ScraperSettings',
+                'CurrentCollectionID'
+            ],
+            prefix='AKL.BulkSystemScrape.'
+        )
+
+        kodi.notify_warn(
+            kodi.translate(44156)
+        )
+        return
+
+    try:
+        scraper_settings = json.loads(scraper_settings_json)
+    except (TypeError, ValueError):
+        logger.error(
+            'BULK_SYSTEM_SCRAPE: Invalid prepared scraper settings. '
+            'Cancelling bulk system scrape.'
+        )
+
+        kodi.clear_windowprops(
+            [
+                'Queue',
+                'ScraperID',
+                'ScraperSettings',
+                'CurrentCollectionID'
+            ],
+            prefix='AKL.BulkSystemScrape.'
+        )
+
+        kodi.notify_warn(
+            kodi.translate(44156)
+        )
+        return
+
+    romcollection_id = collection_ids.pop(0)
+
+    kodi.set_windowprop(
+        'AKL.BulkSystemScrape.Queue',
+        json.dumps(collection_ids)
+    )
+
+    kodi.set_windowprop(
+        'AKL.BulkSystemScrape.CurrentCollectionID',
+        romcollection_id
+    )
+
+    logger.info(
+        f'BULK_SYSTEM_SCRAPE: Starting system scrape for collection '
+        f'"{romcollection_id}". {len(collection_ids)} collection(s) '
+        f'remaining.'
+    )
+
+    AppMediator.async_cmd(
+        SCRAPE_SYSTEM,
+        {
+            'romcollection_id': romcollection_id,
+            'prepared_scraper_id': scraper_id,
+            'prepared_scraper_settings': scraper_settings
+        }
+    )
+
 
 @AppMediator.register(SCRAPE_SYSTEM)
 def cmd_scrape_system(args):
@@ -92,37 +208,50 @@ def cmd_scrape_system(args):
             )
             return
 
-        if len(source_ids) > 1:
+        sources = []
+        artwork_roots = {}
+
+        for source_id in source_ids:
+            source = source_repository.find(source_id)
+
+            if source is None:
+                logger.error(
+                    f'SYSTEM_SCRAPE: Source "{source_id}" was not found.'
+                )
+                return
+
+            assets_root = source.get_assets_root_path()
+
+            if assets_root is None:
+                logger.error(
+                    f'SYSTEM_SCRAPE: Source "{source.get_name()}" '
+                    f'has no artwork root.'
+                )
+                return
+
+            artwork_root = io.FileName(
+                assets_root.getPath().rstrip('/\\')
+            ).getDirAsFileName()
+
+            artwork_root.set_isdir(True)
+
+            artwork_root_path = artwork_root.getPath().rstrip('/\\').lower()
+
+            sources.append((source, assets_root, artwork_root))
+            artwork_roots[artwork_root_path] = artwork_root
+
+        if len(artwork_roots) > 1:
             logger.error(
                 f'SYSTEM_SCRAPE: Collection "{collection.get_name()}" '
-                f'has multiple associated sources. Cannot determine '
-                f'system artwork destination automatically.'
+                f'uses sources with different artwork roots. Cannot '
+                f'determine system artwork destination automatically.'
+            )
+            kodi.notify_warn(
+                kodi.translate(44157)
             )
             return
 
-        source = source_repository.find(source_ids[0])
-
-        if source is None:
-            logger.error(
-                f'SYSTEM_SCRAPE: Source "{source_ids[0]}" '
-                f'was not found.'
-            )
-            return
-
-        assets_root = source.get_assets_root_path()
-
-        if assets_root is None:
-            logger.error(
-                f'SYSTEM_SCRAPE: Source "{source.get_name()}" '
-                f'has no artwork root.'
-            )
-            return
-
-        artwork_root = io.FileName(
-            assets_root.getPath().rstrip('/\\')
-        ).getDirAsFileName()
-
-        artwork_root.set_isdir(True)
+        source, assets_root, artwork_root = sources[0]
 
         systems_root = artwork_root.pjoin(
             'Systems',
@@ -217,7 +346,7 @@ def cmd_scrape_system(args):
                 f'"{romcollection_id}".'
             )
         else:
-            dialog_title = 'Select System Scraper'
+            dialog_title = kodi.translate(44158)
             selected_addon = _select_scraper(
                 uow,
                 dialog_title,
@@ -378,9 +507,9 @@ def cmd_scrape_system_with_settings(args):
         )
         options['SCRAPE'] = kodi.translate(40881)
 
-        dialog_title = (
-            f'Scrape System - {collection.get_name()} '
-            f'({selected_addon.get_name()})'
+        dialog_title = kodi.translate(44159).format(
+            collection.get_name(),
+            selected_addon.get_name()
         )
 
         selected_option = kodi.OrdDictionaryDialog().select(
@@ -402,6 +531,42 @@ def cmd_scrape_system_with_settings(args):
                 args
             )
             return
+
+    bulk_system_scrape_queue = args.get(
+        'bulk_system_scrape_queue'
+    )
+
+    if bulk_system_scrape_queue:
+        logger.info(
+            f'BULK_SYSTEM_SCRAPE: Starting bulk scrape for '
+            f'{len(bulk_system_scrape_queue)} collection(s) using '
+            f'scraper "{selected_addon.get_name()}".'
+        )
+
+        kodi.set_windowprop(
+            'AKL.BulkSystemScrape.Queue',
+            json.dumps(bulk_system_scrape_queue)
+        )
+
+        kodi.set_windowprop(
+            'AKL.BulkSystemScrape.ScraperID',
+            scraper_id
+        )
+
+        kodi.set_windowprop(
+            'AKL.BulkSystemScrape.ScraperSettings',
+            json.dumps(scraper_settings.get_data_dic())
+        )
+
+        kodi.clear_windowprops([
+            'AKL.BulkSystemScrape.CurrentCollectionID'
+        ])
+
+        AppMediator.async_cmd(
+            PROCESS_BULK_SYSTEM_SCRAPE_QUEUE,
+            {}
+        )
+        return
 
     # Re-enter SCRAPE_SYSTEM as a prepared operation so it executes rather
     # than reopening the manual settings screen.
@@ -476,7 +641,7 @@ def cmd_prepare_wizard_system_scrape(args):
             )
         else:
             dialog_title = (
-                f'Select System Scraper - {collection.get_name()}'
+                kodi.translate(44160).format(collection.get_name())
             )
 
             selected_addon = _select_scraper(

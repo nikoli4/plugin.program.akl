@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 #
 # Advanced Kodi Launcher: Commands (Precompiling the view data)
 #
@@ -599,7 +599,10 @@ def _render_romcollection_view(romcollection_obj: ROMCollection, roms_repository
     for rom in roms:
         try:
             rom.apply_romcollection_asset_mapping(romcollection_obj)
-            view_items.append(render_rom_listitem(rom))
+            view_items.append(render_rom_listitem(
+                rom,
+                romcollection_obj.get_view_assets().get('controller', '')
+            ))
         except Exception:
             logger.exception(f'Exception while rendering list item ROM "{rom.get_name()}"')
         
@@ -722,7 +725,8 @@ def _render_category_listitem(category_obj: Category) -> dict:
     }
 
 
-def _render_romcollection_listitem(romcollection_obj: ROMCollection) -> dict:
+def _render_romcollection_listitem(
+        romcollection_obj: ROMCollection) -> dict:
     # --- Do not render row if romcollection finished ---
     if romcollection_obj.is_finished() and \
             (romcollection_obj.get_type() in constants.OBJ_VIRTUAL_TYPES or \
@@ -732,7 +736,8 @@ def _render_romcollection_listitem(romcollection_obj: ROMCollection) -> dict:
     romcollection_name = romcollection_obj.get_name()
     ICON_OVERLAY = 5 if romcollection_obj.is_finished() else 4
     assets = romcollection_obj.get_view_assets()
-    
+
+
     if romcollection_obj.get_type() == constants.OBJ_COLLECTION_VIRTUAL:
         if romcollection_obj.get_parent_id() is None:
             url = globals.router.url_for_path(f'collection/virtual/{romcollection_obj.get_id()}')
@@ -763,7 +768,8 @@ def _render_romcollection_listitem(romcollection_obj: ROMCollection) -> dict:
             constants.AKL_CONTENT_LABEL: constants.AKL_CONTENT_VALUE_ROMCOLLECTION,
             'platform': romcollection_obj.get_platform(),
             'boxsize': romcollection_obj.get_box_sizing(),
-            'obj_type': romcollection_obj.get_type()
+            'obj_type': romcollection_obj.get_type(),
+            'akl.controller': assets.get('controller', '')
         }
     }
 
@@ -776,14 +782,14 @@ def _render_romcollection_listitem(romcollection_obj: ROMCollection) -> dict:
     #if not settings.getSettingAsBool('display_hide_LB_scraper'):  render_vcategory_LB_offline_scraper_row()
 
 
-def render_rom_listitem(rom_obj: ROM) -> dict:
+def render_rom_listitem(rom_obj: ROM, controller_path='') -> dict:
     # --- Do not render row if romcollection finished ---
     if rom_obj.is_finished() and settings.getSettingAsBool('display_hide_finished'):
         return
 
     ICON_OVERLAY = 5 if rom_obj.is_finished() else 4
     assets = rom_obj.get_view_assets()
-    
+
     for asset_id, asset_path in list(assets.items()):
         if not asset_path:
             continue
@@ -852,6 +858,13 @@ def render_rom_listitem(rom_obj: ROM) -> dict:
             logger.exception(
                 'AKL ART DISPLAY CACHE: ROM alias update failed: asset="{}"'.format(asset_id)
             )
+
+    # Kodi skin compatibility.
+    # Boxfront is AKL's primary game-cover artwork. Expose the resolved
+    # display-cache path through Kodi's standard thumb artwork key too.
+    if assets.get('boxfront'):
+        assets['thumb'] = assets['boxfront']
+
 
     # --- Default values for flags ---
     AKL_InFav_bool_value = constants.AKL_INFAV_BOOL_VALUE_FALSE
@@ -951,6 +964,7 @@ def render_rom_listitem(rom_obj: ROM) -> dict:
             'boxsize': rom_obj.get_box_sizing(),
             'tags': ','.join(rom_obj.get_tags()),
             'obj_type': constants.OBJ_ROM,
+            'akl.controller': controller_path,
             # --- ROM flags (Skins will use these flags to render icons) ---
             constants.AKL_CONTENT_LABEL: constants.AKL_CONTENT_VALUE_ROM,
             constants.AKL_INFAV_BOOL_LABEL: AKL_InFav_bool_value,
@@ -960,3 +974,15 @@ def render_rom_listitem(rom_obj: ROM) -> dict:
             constants.AKL_PCLONE_STAT_LABEL: AKL_PClone_stat_value
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+

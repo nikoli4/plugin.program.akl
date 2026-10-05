@@ -160,16 +160,6 @@
                 </setting>
             </group>
             <group id="grp_specials" label="40023">
-                <setting id="display_hide_favs" type="boolean" label="40408" help="">
-                    <level>0</level>
-                    <default>false</default>
-                    <control type="toggle"/>
-                </setting>
-                <setting id="display_hide_collections" type="boolean" label="40409" help="">
-                    <level>0</level>
-                    <default>false</default>
-                    <control type="toggle"/>
-                </setting>
                 <setting id="display_hide_vcategories" type="boolean" label="40410" help="">
                     <level>0</level>
                     <default>false</default>
@@ -180,31 +170,56 @@
                     <default>false</default>
                     <control type="toggle"/>
                 </setting>
+                <setting id="display_hide_favs" type="boolean" label="40408" help="">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+				<setting id="display_hide_g_reports" type="boolean" label="40415" help="">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+				<setting id="display_hide_mostplayed" type="boolean" label="40413" help="">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
                 <setting id="display_hide_recent" type="boolean" label="40412" help="">
                     <level>0</level>
                     <default>false</default>
                     <control type="toggle"/>
                 </setting>
-                <setting id="display_hide_mostplayed" type="boolean" label="40413" help="">
+				<setting id="display_hide_rendering_notifications" type="boolean" label="40417" help="">
                     <level>0</level>
                     <default>false</default>
                     <control type="toggle"/>
                 </setting>
+				<setting id="display_hide_launchers" type="boolean" label="44165" help="">
+					<level>0</level>
+					<default>false</default>
+					<control type="toggle"/>
+				</setting>	
+				<setting id="display_hide_sources" type="boolean" label="44164" help="">
+					<level>0</level>
+					<default>false</default>
+					<control type="toggle"/>
+				</setting>
                 <setting id="display_hide_utilities" type="boolean" label="40414" help="">
                     <level>0</level>
                     <default>false</default>
                     <control type="toggle"/>
                 </setting>
-                <setting id="display_hide_g_reports" type="boolean" label="40415" help="">
-                    <level>0</level>
-                    <default>false</default>
-                    <control type="toggle"/>
-                </setting>
-                <setting id="display_hide_rendering_notifications" type="boolean" label="40417" help="">
-                    <level>0</level>
-                    <default>false</default>
-                    <control type="toggle"/>
-                </setting>
+				<setting id="display_hide_utilities_info" type="string" label="44166" help="">
+					<level>0</level>
+					<default/>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control type="button" format="action">
+						<data>RunPlugin(plugin://plugin.program.akl/execute/command/hide_utilities_info)</data>
+					</control>
+				</setting>
             </group>
         </category>
         <category id="paths" label="40015">
@@ -296,6 +311,16 @@
                         <heading>44040</heading>
                     </control>
                 </setting>
+				<setting id="setup_default_artwork_root_info" type="string" label="44169" help="">
+					<level>0</level>
+					<default/>
+					<constraints>
+						<allowempty>true</allowempty>
+					</constraints>
+					<control type="button" format="action">
+						<data>RunPlugin(plugin://plugin.program.akl/execute/command/default_artwork_root_info)</data>
+					</control>
+				</setting>
             </group>
         </category>
         <!-- <category id="plugins" label="40017">

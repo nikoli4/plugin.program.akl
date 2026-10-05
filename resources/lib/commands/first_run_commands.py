@@ -200,6 +200,10 @@ def cmd_first_run_setup(args):
             )
         }
 
+        # Explain how the default artwork directory is used before
+        # asking the user to configure the default setup paths.
+        kodi.dialog_OK(kodi.translate(44170))
+
         wizard = kodi.WizardDialog_FileBrowse(
             None,
             'artwork_root',

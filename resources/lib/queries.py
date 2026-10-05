@@ -24,6 +24,7 @@ DELETE_ASSET_MAPPING = "DELETE FROM assetmappings WHERE id = ?"
 # CATEGORIES
 SELECT_CATEGORY = "SELECT * FROM vw_categories WHERE id = ?"
 SELECT_CATEGORY_ASSETS = "SELECT * FROM vw_category_assets WHERE category_id = ?"
+SELECT_CATEGORY_ASSETS = "SELECT * FROM vw_category_assets WHERE category_id = ?"
 SELECT_CATEGORIES = "SELECT * FROM vw_categories ORDER BY m_name"
 SELECT_ALL_CATEGORY_ASSETS = "SELECT * FROM vw_category_assets"
 SELECT_ALL_CATEGORY_ASSET_MAPPINGS = """
@@ -258,6 +259,7 @@ DELETE_ALL_RULES_FROM_RULESET = "DELETE FROM import_rule WHERE ruleset_id = ?"
 # ROMsRepository -> ROMs from SQLite DB
 #
 SELECT_ROM = "SELECT * FROM vw_roms WHERE id = ?"
+SELECT_ALL_ROM_IDS = "SELECT id FROM vw_roms"
 SELECT_ROM_ASSETS = "SELECT * FROM vw_rom_assets WHERE rom_id = ?"
 SELECT_ROM_ASSETPATHS = "SELECT * FROM vw_rom_asset_paths WHERE rom_id = ?"
 SELECT_ROM_TAGS = "SELECT * FROM vw_rom_tags WHERE rom_id = ?"

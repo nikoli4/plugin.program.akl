@@ -391,35 +391,46 @@ def _setup_new_system(args):
 
     # --- Step 3: Source artwork/assets folder ---
 
-    assets_wizard = kodi.WizardDialog_FileBrowse(
-        None,
-        'assets_path',
-        kodi.translate(44051),
-        0,
-        ''
-    )
-
-    setup_data['assets_path'] = settings.getSetting(
+    # Prefer the default artwork root configured during first-run setup
+    # or in AKL's Paths settings. If no default has been configured,
+    # fall back to the normal directory browser.
+    selected_assets_parent = settings.getSetting(
         'setup_default_artwork_root'
     )
 
-    setup_data = assets_wizard.runWizard(setup_data)
-
-    if setup_data is None:
-        logger.debug(
-            'SETUP_WIZARD: New system setup cancelled during '
-            'artwork/assets folder selection.'
+    if selected_assets_parent:
+        logger.info(
+            f'SETUP_WIZARD: Using configured default artwork/assets root: '
+            f'"{selected_assets_parent}"'
         )
-        return
-
-    selected_assets_parent = setup_data.get('assets_path', '')
-
-    if not selected_assets_parent:
-        logger.warning(
-            'SETUP_WIZARD: Artwork/assets folder selection '
-            'completed without a path.'
+    else:
+        assets_wizard = kodi.WizardDialog_FileBrowse(
+            None,
+            'assets_path',
+            kodi.translate(44051),
+            0,
+            ''
         )
-        return
+
+        setup_data['assets_path'] = ''
+
+        setup_data = assets_wizard.runWizard(setup_data)
+
+        if setup_data is None:
+            logger.debug(
+                'SETUP_WIZARD: New system setup cancelled during '
+                'artwork/assets folder selection.'
+            )
+            return
+
+        selected_assets_parent = setup_data.get('assets_path', '')
+
+        if not selected_assets_parent:
+            logger.warning(
+                'SETUP_WIZARD: Artwork/assets folder selection '
+                'completed without a path.'
+            )
+            return
 
     assets_parent_FN = io.FileName(
         selected_assets_parent,

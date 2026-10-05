@@ -19,6 +19,7 @@ from __future__ import division
 
 import logging
 import collections
+import random
 
 from akl.utils import kodi
 from akl import settings, constants
@@ -577,6 +578,76 @@ def cmd_set_default_rom_launchers(args):
         uow.commit()
     
     AppMediator.sync_cmd('EDIT_ROM_LAUNCHERS', args)
+
+
+# -------------------------------------------------------------------------------------------------
+# Random ROM launching
+# -------------------------------------------------------------------------------------------------
+@AppMediator.register('LAUNCH_RANDOM_ROM')
+def cmd_launch_random_rom(args):
+    import random
+
+    romcollection_id = args.get('romcollection_id')
+
+    uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
+    with uow:
+        rom_repository = ROMsRepository(uow)
+
+        if romcollection_id:
+            romcollection_repository = ROMCollectionRepository(uow)
+            romcollection = romcollection_repository.find_romcollection(
+                romcollection_id
+            )
+
+            if romcollection is None:
+                logger.warning(
+                    f'RANDOM_ROM: ROM collection "{romcollection_id}" '
+                    f'was not found.'
+                )
+                kodi.notify_warn(kodi.translate(44162))
+                return
+
+            roms = list(
+                rom_repository.find_roms_by_romcollection(
+                    romcollection
+                )
+            )
+            rom_ids = [rom.get_id() for rom in roms]
+
+            logger.info(
+                f'RANDOM_ROM: Found {len(rom_ids)} game(s) in '
+                f'collection "{romcollection.get_name()}".'
+            )
+        else:
+            rom_ids = rom_repository.find_all_rom_ids()
+
+            logger.info(
+                f'RANDOM_ROM: Found {len(rom_ids)} game(s) '
+                f'in the full library.'
+            )
+
+    if not rom_ids:
+        logger.warning(
+            'RANDOM_ROM: No games are available to launch.'
+        )
+        kodi.notify_warn(kodi.translate(44162))
+        return
+
+    rom_id = random.choice(rom_ids)
+
+    logger.info(
+        f'RANDOM_ROM: Selected ROM "{rom_id}"'
+        + (
+            f' from collection "{romcollection_id}".'
+            if romcollection_id
+            else ' from the full library.'
+        )
+    )
+
+    AppMediator.sync_cmd(
+        'EXECUTE_ROM',
+        {'rom_id': rom_id}
+    )
 
 
 # -------------------------------------------------------------------------------------------------
