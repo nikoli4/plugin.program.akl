@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.program.akl" name="Advanced Kodi Launcher Revival" version="1.7.0" provider-name="chrisism, nikoli4">
+<addon id="plugin.program.akl" name="Advanced Kodi Launcher Revival" version="1.7.1" provider-name="chrisism, nikoli4">
   <requires>
       <import addon="xbmc.python" version="3.0.0"/>
       <import addon="script.module.routing" version="0.2.3"/>
@@ -21,9 +21,9 @@
     <assets>
       <icon>media/icon-revival.png</icon>
       <fanart>media/fanart-revival.jpg</fanart>
-      <screenshot>media/arcticzephyr_reloaded_01_companies.jpg</screenshot>
-      <screenshot>media/arcticzephyr_reloaded_02_systems.jpg</screenshot>
-      <screenshot>media/arcticzephyr_reloaded_03_games.jpg</screenshot>
+      <screenshot>media/akl-revival-screenshot-01.jpg</screenshot>
+      <screenshot>media/akl-revival-screenshot-02.jpg</screenshot>
+      <screenshot>media/akl-revival-screenshot-03.jpg</screenshot>
     </assets>
     <news>See changelog.md for information about the latest release.</news>
   </extension>

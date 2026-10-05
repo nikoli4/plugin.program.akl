@@ -1,3 +1,9 @@
+## 1.7.1
+
+- Updated AKL screenshots to showcase the current Arctic: Zephyr - Reloaded (AKL Edition) interface.
+- Replaced the older 720p screenshots with three selected current 1080p screenshots.
+- Renamed screenshot assets so Kodi refreshes cached add-on screenshots.
+
 ## 1.7.0
 
 - Updated the Advanced Kodi Launcher Library Module dependency to version 1.4.0.
