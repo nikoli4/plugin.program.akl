@@ -1,3 +1,11 @@
+## 1.7.2
+
+- Fixed importing local system artwork into the configured default artwork directory.
+- Fixed manual artwork imports failing when the destination artwork directory does not yet exist.
+- Fixed system artwork not updating immediately after manually replacing an image.
+- Improved live artwork refresh handling for both systems and individual games.
+- Improved artwork display caching so replaced images refresh without restarting Kodi.
+
 ## 1.7.1
 
 - Updated AKL screenshots to showcase the current Arctic: Zephyr - Reloaded (AKL Edition) interface.

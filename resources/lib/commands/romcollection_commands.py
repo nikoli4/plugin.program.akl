@@ -137,6 +137,7 @@ def cmd_edit_romcollection(args):
     if selected_option is None:
         # >> Exits context menu
         logger.debug('EDIT_ROMCOLLECTION: cmd_edit_romcollection() Selected None. Closing context menu')
+        kodi.refresh_container()
         return
     
     # >> Execute subcommand. May be atomic, maybe a submenu.
@@ -193,36 +194,61 @@ def cmd_romcollection_metadata(args):
 def cmd_romcollection_edit_assets(args):
     romcollection_id = args['romcollection_id'] if 'romcollection_id' in args else None
     preselected_option = args['selected_asset'] if 'selected_asset' in args else None
-    
+
+    artwork_changed = False
+    render_romcollection_id = None
+    render_category_id = None
+    selected_asset_id = None
+
     uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
     with uow:
         repository = ROMCollectionRepository(uow)
         romcollection = repository.find_romcollection(romcollection_id)
-        
+
         selected_asset_to_edit = editors.edit_object_assets(romcollection, preselected_option)
         if selected_asset_to_edit is None:
             AppMediator.sync_cmd(EDIT_ROMCOLLECTION, args)
             return
-        
+
         if selected_asset_to_edit == editors.SCRAPE_CMD:
             AppMediator.async_cmd(editors.SCRAPE_CMD, args)
             return
-    
+
         if selected_asset_to_edit == editors.EDIT_DEFAULT_ASSETS:
             AppMediator.async_cmd(ROMCOLLECTION_EDIT_DEFAULT_ASSETS, args)
             return
-        
+
         asset = g_assetFactory.get_asset_info(selected_asset_to_edit)
-        # >> Execute edit asset menu subcommand. Then, execute recursively this submenu again.
-        # >> The menu dialog is instantiated again so it reflects the changes just edited.
+        selected_asset_id = asset.id
+
+        # >> Execute edit asset menu subcommand.
         # >> If edit_asset() returns a cmd other than None changes were made.
         if editors.edit_asset(romcollection, asset) is not None:
             repository.update_romcollection(romcollection)
             uow.commit()
-            AppMediator.async_cmd('RENDER_ROMCOLLECTION_VIEW', {'romcollection_id': romcollection.get_id()})
-            AppMediator.async_cmd('RENDER_CATEGORY_VIEW', {'category_id': romcollection.get_parent_id()})
 
-    AppMediator.sync_cmd(ROMCOLLECTION_EDIT_ASSETS, {'romcollection_id': romcollection.get_id(), 'selected_asset': asset.id})
+            # Save these values for rendering after the UnitOfWork has closed
+            # and the SQLite transaction has actually been committed.
+            artwork_changed = True
+            render_romcollection_id = romcollection.get_id()
+            render_category_id = romcollection.get_parent_id()
+
+    # The real SQLite commit occurs when the UnitOfWork exits above.
+    # Render only after that so the renderers see the newly committed artwork.
+    if artwork_changed:
+        AppMediator.sync_cmd('RENDER_ROMCOLLECTION_VIEW', {
+            'romcollection_id': render_romcollection_id,
+            'skip_refresh': True
+        })
+        AppMediator.sync_cmd('RENDER_CATEGORY_VIEW', {
+            'category_id': render_category_id,
+            'skip_refresh': True
+        })
+
+    AppMediator.sync_cmd(ROMCOLLECTION_EDIT_ASSETS, {
+        'romcollection_id': romcollection_id,
+        'selected_asset': selected_asset_id
+    })
 
 
 @AppMediator.register(ROMCOLLECTION_EDIT_DEFAULT_ASSETS)

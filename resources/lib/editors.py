@@ -320,8 +320,13 @@ def edit_asset(obj_instance: MetaDataItemABC, asset_info: AssetInfo, assets_dire
         addon_assets_directory = settings.getSettingAsFilePath('categories_asset_dir', isdir=True,
                                                                fallback=globals.g_PATHS.DEFAULT_CAT_ASSET_DIR)
     elif obj_instance.get_type() == constants.OBJ_ROMCOLLECTION:
-        addon_assets_directory = settings.getSettingAsFilePath('collections_asset_dir', isdir=True,
-                                                               fallback=globals.g_PATHS.DEFAULT_COL_ASSET_DIR)
+        # Store manually imported system artwork alongside scraped system artwork.
+        artwork_root = settings.getSetting('setup_default_artwork_root')
+        if artwork_root:
+            addon_assets_directory = io.FileName(artwork_root, isdir=True).pjoin('Systems', isdir=True)
+        else:
+            addon_assets_directory = settings.getSettingAsFilePath('collections_asset_dir', isdir=True,
+                                                                   fallback=globals.g_PATHS.DEFAULT_COL_ASSET_DIR)
     elif obj_instance.get_type() == constants.OBJ_ROM:
         addon_assets_directory = settings.getSettingAsFilePath('launchers_asset_dir', isdir=True,
                                                                fallback=globals.g_PATHS.DEFAULT_ROM_ASSET_DIR)
@@ -337,6 +342,10 @@ def edit_asset(obj_instance: MetaDataItemABC, asset_info: AssetInfo, assets_dire
     asset_type_directory = obj_instance.get_asset_path(asset_info)
     if not asset_type_directory:
         asset_type_directory = assets_directory.pjoin(asset_info.plural.lower(), isdir=True)
+
+    # Ensure the artwork-type directory exists before importing local artwork.
+    if not asset_type_directory.exists():
+        asset_type_directory.makedirs()
 
     logger.info(f'edit_asset() Editing {obj_instance.get_object_name()} {asset_info.name}')
     logger.info(f'edit_asset() Object ID {obj_instance.get_id()}')

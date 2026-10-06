@@ -113,7 +113,8 @@ def cmd_render_view_data(args):
     do_notification = not settings.getSettingAsBool("display_hide_rendering_notifications")
     if do_notification:
         kodi.notify(kodi.translate(40966))
-    kodi.refresh_container()
+    if not args.get('skip_refresh', False):
+        kodi.refresh_container()
 
 
 @AppMediator.register(RENDER_VIRTUAL_VIEWS)
@@ -251,7 +252,8 @@ def cmd_render_romcollection_view_data(args):
     
     if do_notification:
         kodi.notify(kodi.translate(40966))
-    kodi.refresh_container()
+    if not args.get('skip_refresh', False):
+        kodi.refresh_container()
 
 
 @AppMediator.register(RENDER_SOURCES_VIEW)
@@ -725,6 +727,93 @@ def _render_category_listitem(category_obj: Category) -> dict:
     }
 
 
+def _get_art_display_path(object_type, object_id, asset_id, asset_path):
+    """Return a versioned display path for local artwork.
+
+    Kodi may retain an already-decoded image when the contents of an artwork
+    file change without its path changing. A display-only copy whose filename
+    includes the source modification time gives changed artwork a new identity
+    while leaving the authoritative artwork path unchanged.
+    """
+    if not asset_path:
+        return asset_path
+
+    try:
+        asset_file = io.FileName(asset_path)
+
+        # Videos and manuals do not use the image display cache.
+        if asset_file.isVideoFile() or asset_file.isManualFile():
+            return asset_path
+
+        # Leave Kodi resources, URLs, and other non-local artwork untouched.
+        if not os.path.isfile(asset_path):
+            return asset_path
+
+        source_mtime = os.stat(asset_path).st_mtime_ns
+
+        display_dir = xbmcvfs.translatePath(
+            'special://profile/addon_data/plugin.program.akl/art_display_cache/'
+        )
+
+        if not os.path.isdir(display_dir):
+            os.makedirs(display_dir, exist_ok=True)
+
+        source_ext = os.path.splitext(asset_path)[1]
+
+        alias_prefix = 'akl_{}_{}_{}_'.format(
+            object_type,
+            object_id,
+            asset_id
+        )
+
+        display_path = os.path.join(
+            display_dir,
+            '{}{}{}'.format(
+                alias_prefix,
+                source_mtime,
+                source_ext
+            )
+        )
+        display_path = display_path.replace('\\', '/')
+
+        # Reuse the existing display copy while the source is unchanged.
+        if os.path.isfile(display_path):
+            return display_path
+
+        # The source changed. Remove obsolete aliases for this specific
+        # object/asset before creating the new display copy.
+        for existing_name in os.listdir(display_dir):
+            if existing_name.startswith(alias_prefix):
+                existing_path = os.path.join(display_dir, existing_name)
+                existing_path = existing_path.replace('\\', '/')
+
+                if existing_path != display_path:
+                    try:
+                        os.remove(existing_path)
+                    except Exception:
+                        logger.exception(
+                            'AKL ART DISPLAY CACHE: old alias delete failed: "{}"'.format(
+                                existing_path
+                            )
+                        )
+
+        shutil.copy2(asset_path, display_path)
+        return display_path
+
+    except Exception:
+        logger.exception(
+            'AKL ART DISPLAY CACHE: alias update failed: '
+            'type="{}", object="{}", asset="{}"'.format(
+                object_type,
+                object_id,
+                asset_id
+            )
+        )
+
+        # Artwork display should never fail merely because cache-busting failed.
+        return asset_path
+
+
 def _render_romcollection_listitem(
         romcollection_obj: ROMCollection) -> dict:
     # --- Do not render row if romcollection finished ---
@@ -737,6 +826,15 @@ def _render_romcollection_listitem(
     ICON_OVERLAY = 5 if romcollection_obj.is_finished() else 4
     assets = romcollection_obj.get_view_assets()
 
+    # Use versioned display copies for local artwork so Kodi does not reuse
+    # an already-decoded image after the source artwork has been replaced.
+    for asset_id, asset_path in list(assets.items()):
+        assets[asset_id] = _get_art_display_path(
+            'collection',
+            romcollection_obj.get_id(),
+            asset_id,
+            asset_path
+        )
 
     if romcollection_obj.get_type() == constants.OBJ_COLLECTION_VIRTUAL:
         if romcollection_obj.get_parent_id() is None:
@@ -790,74 +888,15 @@ def render_rom_listitem(rom_obj: ROM, controller_path='') -> dict:
     ICON_OVERLAY = 5 if rom_obj.is_finished() else 4
     assets = rom_obj.get_view_assets()
 
+    # Use versioned display copies for local artwork so Kodi does not reuse
+    # an already-decoded image after the source artwork has been replaced.
     for asset_id, asset_path in list(assets.items()):
-        if not asset_path:
-            continue
-
-        try:
-            asset_file = io.FileName(asset_path)
-
-            # Only create display aliases for image artwork.
-            # Leave videos and manuals untouched.
-            if asset_file.isVideoFile() or asset_file.isManualFile():
-                continue
-
-            # Ignore Kodi/default resources rather than treating them
-            # as normal filesystem artwork.
-            if not os.path.isfile(asset_path):
-                continue
-
-            source_mtime = int(os.path.getmtime(asset_path))
-
-            display_dir = xbmcvfs.translatePath(
-                'special://profile/addon_data/plugin.program.akl/art_display_cache/'
-            )
-
-            if not os.path.isdir(display_dir):
-                os.makedirs(display_dir, exist_ok=True)
-
-            source_ext = os.path.splitext(asset_path)[1]
-
-            display_path = os.path.join(
-                display_dir,
-                'akl_rom_{}_{}_{}{}'.format(
-                    rom_obj.get_id(),
-                    asset_id,
-                    source_mtime,
-                    source_ext
-                )
-            )
-            display_path = display_path.replace('\\', '/')
-            
-            if not os.path.isfile(display_path):
-                alias_prefix = 'akl_rom_{}_{}_'.format(
-                    rom_obj.get_id(),
-                    asset_id
-                )
-
-                for existing_name in os.listdir(display_dir):
-                    if existing_name.startswith(alias_prefix):
-                        existing_path = os.path.join(display_dir, existing_name)
-                        existing_path = existing_path.replace('\\', '/')
-
-                        if existing_path != display_path:
-                            try:
-                                os.remove(existing_path)
-                            except Exception:
-                                logger.exception(
-                                    'AKL ART DISPLAY CACHE: old ROM alias delete failed: "{}"'.format(
-                                        existing_path
-                                    )
-                                )
-
-                shutil.copy2(asset_path, display_path)
-
-            assets[asset_id] = display_path
-
-        except Exception:
-            logger.exception(
-                'AKL ART DISPLAY CACHE: ROM alias update failed: asset="{}"'.format(asset_id)
-            )
+        assets[asset_id] = _get_art_display_path(
+            'rom',
+            rom_obj.get_id(),
+            asset_id,
+            asset_path
+        )
 
     # Kodi skin compatibility.
     # Boxfront is AKL's primary game-cover artwork. Expose the resolved
