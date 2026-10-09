@@ -377,7 +377,7 @@ def cmd_scrape_system(args):
 
         if not prepared_scraper_settings:
             scraper_settings.asset_IDs_to_scrape = (
-                selected_addon.get_supported_assets()
+                selected_addon.get_supported_system_assets()
             )
             scraper_settings.metadata_IDs_to_scrape = (
                 selected_addon.get_supported_metadata()
@@ -389,7 +389,7 @@ def cmd_scrape_system(args):
                 selected_addon.get_supported_metadata()
             )
             args['scraper_supported_assets'] = (
-                selected_addon.get_supported_assets()
+                selected_addon.get_supported_system_assets()
             )
 
             AppMediator.sync_cmd(
@@ -464,21 +464,6 @@ def cmd_scrape_system_with_settings(args):
         options['SCRAPER_ASSET_POLICY'] = (
             kodi.translate(41116).format(
                 kodi.translate(scraper_settings.scrape_assets_policy)
-            )
-        )
-        options['SCRAPER_SEARCH_TERM_MODE'] = (
-            kodi.translate(41117).format(
-                kodi.translate(scraper_settings.search_term_mode)
-            )
-        )
-        options['SCRAPER_GAME_SELECTION_MODE'] = (
-            kodi.translate(41118).format(
-                kodi.translate(scraper_settings.game_selection_mode)
-            )
-        )
-        options['SCRAPER_ASSET_SELECTION_MODE'] = (
-            kodi.translate(41119).format(
-                kodi.translate(scraper_settings.asset_selection_mode)
             )
         )
         options['SCRAPER_META_TO_SCRAPE'] = (
@@ -715,7 +700,7 @@ def cmd_prepare_wizard_system_scrape(args):
                 scraper_settings = ScraperSettings.from_addon_settings()
 
         scraper_settings.asset_IDs_to_scrape = (
-            selected_addon.get_supported_assets()
+            selected_addon.get_supported_system_assets()
         )
         scraper_settings.metadata_IDs_to_scrape = (
             selected_addon.get_supported_metadata()

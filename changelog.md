@@ -1,3 +1,13 @@
+## 1.7.3
+
+- Updated the AKL shared module dependency to version 1.4.1.
+- Added Console artwork support for system collections.
+- Separated system artwork capabilities from game artwork capabilities.
+- Improved manual and bulk system scraping to use supported system artwork types.
+- Simplified the system scraping interface by removing game-specific scraping options.
+- Improved system artwork destination handling.
+- Renamed the context menu action to Bulk System Scraper.
+
 ## 1.7.2
 
 - Fixed importing local system artwork into the configured default artwork directory.

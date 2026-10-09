@@ -713,6 +713,10 @@ class ScraperAddon(ROMAddon):
         supported_items = self.get_supported_assets()
         return supported_items is not None and asset_id in supported_items
 
+    def is_system_asset_supported(self, asset_id) -> bool:
+        supported_items = self.get_supported_system_assets()
+        return supported_items is not None and asset_id in supported_items
+
     def get_supported_metadata(self) -> typing.List[str]:
         extra_settings = self.addon.get_extra_settings()
         supported_types = extra_settings['supported_metadata'] if 'supported_metadata' in extra_settings else None
@@ -725,6 +729,17 @@ class ScraperAddon(ROMAddon):
         supported_types = extra_settings['supported_assets'] if 'supported_assets' in extra_settings else None
         if supported_types is None:
             return None
+        return supported_types.split('|')
+
+    def get_supported_system_assets(self) -> typing.List[str]:
+        extra_settings = self.addon.get_extra_settings()
+        supported_types = (
+            extra_settings['supported_system_assets']
+            if 'supported_system_assets' in extra_settings
+            else None
+        )
+        if not supported_types:
+            return []
         return supported_types.split('|')
 
     def get_scraper_settings(self) -> ScraperSettings:
@@ -2411,6 +2426,8 @@ class AssetInfoFactory(object):
             asset_path_noext_FN = AssetPath.pjoin(asset_base_noext + objectID_str + '_clearlogo')
         elif asset_ID == constants.ASSET_CONTROLLER_ID:
             asset_path_noext_FN = AssetPath.pjoin(asset_base_noext + objectID_str + '_controller')
+        elif asset_ID == constants.ASSET_CONSOLE_ID:
+            asset_path_noext_FN = AssetPath.pjoin(asset_base_noext + objectID_str + '_console')
         elif asset_ID == constants.ASSET_TRAILER_ID:
             asset_path_noext_FN = AssetPath.pjoin(asset_base_noext + objectID_str + '_trailer')
         elif asset_ID == constants.ASSET_TITLE_ID:
@@ -2579,6 +2596,18 @@ class AssetInfoFactory(object):
         a.exts                          = self.asset_get_filesearch_extension_list(constants.IMAGE_EXTENSION_LIST)
         a.exts_dialog                   = self.asset_get_dialog_extension_list(constants.IMAGE_EXTENSION_LIST)
         a.path_key                      = 'path_controller'
+        self.ASSET_INFO_ID_DICT[a.id]   = a
+
+        a = AssetInfo()
+        a.id                            = constants.ASSET_CONSOLE_ID
+        a.name_id                       = 43017
+        a.name                          = 'Console'
+        a.plural                        = 'Consoles'
+        a.fname_infix                   = 'console'
+        a.kind_str                      = 'image'
+        a.exts                          = self.asset_get_filesearch_extension_list(constants.IMAGE_EXTENSION_LIST)
+        a.exts_dialog                   = self.asset_get_dialog_extension_list(constants.IMAGE_EXTENSION_LIST)
+        a.path_key                      = 'path_console'
         self.ASSET_INFO_ID_DICT[a.id]   = a
 
         a = AssetInfo()

@@ -423,6 +423,10 @@ msgctxt "#43016"
 msgid "3D Box"
 msgstr "Assets"
 
+msgctxt "#43017"
+msgid "Console"
+msgstr "Console"
+
 
 ############################
 # Object names
@@ -2808,7 +2812,7 @@ msgid "Update ROM Collection"
 msgstr ""
 
 msgctxt "#44152"
-msgid "Scrape Systems..."
+msgid "Bulk System Scraper..."
 msgstr ""
 
 msgctxt "#44153"

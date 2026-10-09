@@ -71,7 +71,7 @@ def cmd_show_addons(args):
         if selected_option.startswith("cmd_"):
             cmd = selected_option.replace("cmd_", "")
             AppMediator.sync_cmd(cmd)
-            cmd_show_addons()
+            cmd_show_addons(args)
             return
 
         AppMediator.sync_cmd("ADDON_DETAILS", {'addon_id': selected_option})
@@ -129,7 +129,10 @@ def cmd_addon_details(args):
                 ael_addon.set_version(addon_version)
                 ael_addon.set_extra_settings({
                     'supported_metadata': addon.getSetting('akl.scraper.supported_metadata'),
-                    'supported_assets': addon.getSetting('akl.scraper.supported_assets')
+                    'supported_assets': addon.getSetting('akl.scraper.supported_assets'),
+                    'supported_system_assets': addon.getSetting(
+                        'akl.scraper.supported_system_assets'
+                    )
                 })
                 repository.update_addon(ael_addon)
             uow.commit()
@@ -267,7 +270,10 @@ def _process_scraper_addon(
     
     addon_obj.set_extra_settings({
         'supported_metadata': addon.getSetting('akl.scraper.supported_metadata'),
-        'supported_assets': addon.getSetting('akl.scraper.supported_assets')
+        'supported_assets': addon.getSetting('akl.scraper.supported_assets'),
+        'supported_system_assets': addon.getSetting(
+            'akl.scraper.supported_system_assets'
+        )
     })
 
     if addon_id in existing_addon_ids:                
@@ -278,7 +284,10 @@ def _process_scraper_addon(
         time.sleep(1)
         addon_obj.set_extra_settings({
             'supported_metadata': addon.getSetting('akl.scraper.supported_metadata'),
-            'supported_assets': addon.getSetting('akl.scraper.supported_assets')
+            'supported_assets': addon.getSetting('akl.scraper.supported_assets'),
+            'supported_system_assets': addon.getSetting(
+                'akl.scraper.supported_system_assets'
+            )
         })
 
         addon_obj.set_id(existing_addon_ids[addon_id].get_id())
