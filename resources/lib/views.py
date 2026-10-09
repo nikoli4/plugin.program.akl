@@ -377,7 +377,19 @@ def _render_list_items(container_data: dict, container_context_items=[], filter_
         )
     else:
         vw_misc_set_all_sorting_methods()
-    vw_misc_set_AEL_Content(container_data['obj_type'] if 'obj_type' in container_data else constants.OBJ_NONE)
+    # Convert container object types to the content values expected by skins.
+    content_by_type = {
+        constants.OBJ_CATEGORY: constants.AKL_CONTENT_VALUE_CATEGORY,
+        constants.OBJ_CATEGORY_VIRTUAL: constants.AKL_CONTENT_VALUE_CATEGORY,
+        constants.OBJ_ROMCOLLECTION: constants.AKL_CONTENT_VALUE_ROMS,
+        constants.OBJ_COLLECTION_VIRTUAL: constants.AKL_CONTENT_VALUE_ROMS,
+        constants.OBJ_LAUNCHER: constants.AKL_CONTENT_VALUE_LAUNCHERS,
+    }
+    content_type = content_by_type.get(
+        container_data.get('obj_type'),
+        constants.AKL_CONTENT_VALUE_NONE
+    )
+    vw_misc_set_AEL_Content(content_type)
     vw_misc_clear_AEL_Launcher_Content()
 
     # Container Properties
@@ -516,7 +528,7 @@ def vw_misc_set_AEL_Content(AEL_Content_Value):
         xbmcgui.Window(constants.AKL_CONTENT_WINDOW_ID).setProperty(constants.AKL_CONTENT_LABEL, constants.AKL_CONTENT_VALUE_ROMS)
     elif AEL_Content_Value == constants.AKL_CONTENT_VALUE_NONE:
         logger.debug((f'vw_misc_set_AEL_Content() Setting Window({constants.AKL_CONTENT_WINDOW_ID}) '
-                      'property "{constants.AKL_CONTENT_LABEL}" = "{constants.AKL_CONTENT_VALUE_NONE}"'))
+                      f'property "{constants.AKL_CONTENT_LABEL}" = "{constants.AKL_CONTENT_VALUE_NONE}"'))
         xbmcgui.Window(constants.AKL_CONTENT_WINDOW_ID).setProperty(constants.AKL_CONTENT_LABEL, constants.AKL_CONTENT_VALUE_NONE)
     else:
         logger.error('vw_misc_set_AEL_Content() Invalid AEL_Content_Value "{0}"'.format(AEL_Content_Value))

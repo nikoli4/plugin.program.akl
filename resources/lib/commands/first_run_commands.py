@@ -298,10 +298,6 @@ def cmd_first_run_setup(args):
             (
                 'script.akl.steamgriddb',
                 'SteamGridDB'
-            ),
-            (
-                'script.akl.offlinescraper',
-                'Offline Database'
             )
         ])
         

@@ -894,13 +894,6 @@ def cmd_store_scraped_single_rom(args) -> bool:
     if metadata_is_updated:
         AppMediator.async_cmd('RENDER_VCATEGORY_VIEWS')
 
-    kodi.dialog_OK(
-        kodi.translate(44127).format(
-            rom.get_name()
-        ),
-        kodi.translate(44128)
-    )
-
     return True
 
 

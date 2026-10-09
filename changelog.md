@@ -1,3 +1,9 @@
+## 1.7.4
+
+- Fixed scraper callbacks being blocked by a confirmation dialog after saving scraped ROM metadata.
+- Removed the obsolete Offline Database scraper from the first-run Setup Wizard.
+- Fixed AKL content properties for categories, ROM collections, and launchers so Kodi skins receive the expected values.
+
 ## 1.7.3
 
 - Updated the AKL shared module dependency to version 1.4.1.
