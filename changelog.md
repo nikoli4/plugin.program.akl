@@ -1,3 +1,14 @@
+## 1.7.5
+
+- Added automatic restoration of the last-viewed AKL collection when Kodi restarts after launching a game.
+- Applied the configured default emulator directory when manually creating launchers.
+- Applied the configured default ROM directory when manually creating sources.
+- Improved default artwork directory handling for manually created sources.
+- Automatically created source-specific artwork folders when a default artwork root is configured.
+- Preserved manually selected artwork directories when no default artwork root is configured.
+- Preserved existing ROM source paths when editing sources.
+- Improved source setup and removed temporary diagnostic logging.
+
 ## 1.7.4
 
 - Fixed scraper callbacks being blocked by a confirmation dialog after saving scraped ROM metadata.

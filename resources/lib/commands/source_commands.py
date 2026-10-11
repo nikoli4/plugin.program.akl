@@ -64,10 +64,29 @@ def cmd_add_source(args):
         logger.debug(f'ADD_SOURCE: Selected {selected_option.get_id()}')
         source = Source(None, selected_option)
         
-        wizard = kodi.WizardDialog_Selection(None, 'platform', kodi.translate(41099), platforms.AKL_platform_list)
-        wizard = kodi.WizardDialog_Dummy(wizard, 'name', '', _get_name_from_platform)
-        wizard = kodi.WizardDialog_Keyboard(wizard, 'name', kodi.translate(41166))
-        wizard = kodi.WizardDialog_FileBrowse(wizard, 'assets_path', kodi.translate(42038), 0, '')
+        wizard = kodi.WizardDialog_Selection(
+            None, 'platform', kodi.translate(41099),
+            platforms.AKL_platform_list
+        )
+
+        wizard = kodi.WizardDialog_Dummy(
+            wizard, 'name', '', _get_name_from_platform
+        )
+
+        wizard = kodi.WizardDialog_Keyboard(
+            wizard, 'name', kodi.translate(41166)
+        )
+
+        # Use the configured artwork root automatically when available.
+        # Otherwise, preserve the original manual directory selection.
+        configured_artwork_root = settings.getSetting(
+            'setup_default_artwork_root'
+        )
+
+        if not configured_artwork_root:
+            wizard = kodi.WizardDialog_FileBrowse(
+                wizard, 'assets_path', kodi.translate(42038), 0, ''
+            )
         
         source = Source(None, selected_option)
         entity_data = source.get_data_dic()
@@ -77,10 +96,40 @@ def cmd_add_source(args):
         
         source.import_data_dic(entity_data)
         
-        # --- create assets directory ---
-        assets_path = entity_data['assets_path']
-        assets_path_FN = io.FileName(assets_path)
-        source.set_assets_root_path(assets_path_FN, constants.ROM_ASSET_ID_LIST, create_default_subdirectories=True)
+        # --- Create source-specific artwork directory ---
+        # Match the setup wizard's artwork directory structure.
+
+        configured_artwork_root = settings.getSetting(
+            'setup_default_artwork_root'
+        )
+
+        if configured_artwork_root:
+            # Default artwork root: create a source-specific folder.
+            assets_parent_FN = io.FileName(
+                configured_artwork_root,
+                isdir=True
+            )
+            assets_path_FN = assets_parent_FN.pjoin(
+                source.get_name(),
+                isdir=True
+            )
+        else:
+            # Manual selection: preserve the original behavior.
+            assets_path_FN = io.FileName(
+                entity_data['assets_path'],
+                isdir=True
+            )
+
+        source.set_assets_root_path(
+            assets_path_FN,
+            constants.ROM_ASSET_ID_LIST,
+            create_default_subdirectories=True
+        )
+
+        logger.info(
+            f'ADD_SOURCE: Created artwork directory structure '
+            f'for "{source.get_name()}" at "{assets_path_FN.getPath()}"'
+        )
                 
         # --- Determine box size based on platform --
         platform = platforms.get_AKL_platform(entity_data['platform'])
@@ -89,6 +138,23 @@ def cmd_add_source(args):
         source_repository.insert_source(source)
         uow.commit()
         
+    # Apply the configured default ROM directory before
+    # starting scanner configuration for a new source.
+    default_roms_root = settings.getSetting(
+        'setup_default_roms_root'
+    )
+
+    if default_roms_root:
+        kodi.set_windowprop(
+            'AKL.SetupWizard.DefaultROMsRoot',
+            default_roms_root
+        )
+
+        logger.info(
+            f'ADD_SOURCE: Set default ROMs root for scanner '
+            f'configuration: "{default_roms_root}".'
+        )
+
     kodi.notify(kodi.translate(40980))
     kodi.run_script(
         selected_option.get_addon_id(),
@@ -218,25 +284,22 @@ def cmd_edit_source_scanner(args):
         repository = SourcesRepository(uow)
         source = repository.find(source_id)
 
-    setup_wizard_source_id = kodi.get_windowprop(
-        'AKL.SetupWizard.ScannerSourceID'
+    # Apply the configured default ROM directory for both
+    # wizard and manually created sources.
+    default_roms_root = settings.getSetting(
+        'setup_default_roms_root'
     )
 
-    if setup_wizard_source_id == source_id:
-        default_roms_root = settings.getSetting(
-            'setup_default_roms_root'
+    if default_roms_root:
+        kodi.set_windowprop(
+            'AKL.SetupWizard.DefaultROMsRoot',
+            default_roms_root
         )
 
-        if default_roms_root:
-            kodi.set_windowprop(
-                'AKL.SetupWizard.DefaultROMsRoot',
-                default_roms_root
-            )
-
-            logger.info(
-                f'SETUP_WIZARD: Set default ROMs root for scanner '
-                f'configuration: "{default_roms_root}".'
-            )
+        logger.info(
+            f'SOURCE_EDIT_SCANNER: Set default ROMs root '
+            f'for scanner configuration: "{default_roms_root}".'
+        )
      
     kodi.notify(kodi.translate(40980))
     kodi.run_script(

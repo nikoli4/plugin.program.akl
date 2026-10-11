@@ -36,6 +36,9 @@ import sys
 import abc
 import logging
 import time
+import os
+
+import xbmcvfs
 
 # --- Kodi stuff ---
 import xbmc
@@ -114,6 +117,33 @@ def vw_route_render_root():
 def vw_route_render_view(view_id: str):
     logger.debug("Executing route: vw_route_render_view")
     obj_type = vw_get_object_type_by_url(router.path)
+
+    # Remember the last AKL collection visited by the user.
+    if router.path.startswith('/collection/'):
+        try:
+            addon_data = xbmcvfs.translatePath(
+                'special://profile/addon_data/plugin.program.akl/'
+            )
+            os.makedirs(addon_data, exist_ok=True)
+
+            collection_url = (
+                'plugin://plugin.program.akl/collection/' + view_id
+            )
+
+            last_collection_file = os.path.join(
+                addon_data, 'last_viewed_collection.txt'
+            )
+
+            with open(last_collection_file, 'w', encoding='utf-8') as handle:
+                handle.write(collection_url)
+
+            logger.info(
+                'AKL collection tracking: saved %s', collection_url
+            )
+        except Exception:
+            logger.exception(
+                'AKL collection tracking: unable to save collection'
+            )
     container = viewqueries.qry_get_view_items(view_id, obj_type)
     container_context_items = viewqueries.qry_container_context_menu_items(container)
     container_type = container['obj_type'] if container and 'obj_type' in container else constants.OBJ_NONE

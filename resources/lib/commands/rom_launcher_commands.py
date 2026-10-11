@@ -20,6 +20,11 @@ from __future__ import division
 import logging
 import collections
 import random
+import os
+import re
+
+import xbmc
+import xbmcvfs
 
 from akl.utils import kodi
 from akl import settings, constants
@@ -60,6 +65,23 @@ def cmd_add_launcher(args):
     logger.debug(f'Selected {selected_option.get_id()}')
     
     selected_launcher = ROMLauncherAddonFactory.create(selected_option, {})
+
+    # Apply the configured default emulator directory.
+    default_emulators_root = settings.getSetting(
+        'setup_default_emulators_root'
+    )
+
+    if default_emulators_root:
+        kodi.set_windowprop(
+            'AKL.SetupWizard.DefaultEmulatorsRoot',
+            default_emulators_root
+        )
+
+        logger.info(
+            f'ADD_LAUNCHER: Set default Emulators root '
+            f'for launcher configuration: "{default_emulators_root}".'
+        )
+
     selected_launcher.configure(args)
 
 
@@ -719,5 +741,40 @@ def cmd_execute_rom_with_launcher(args):
     if selected_launcher is None:
         return
     
+    # Request a one-time return to the last viewed AKL collection.
+    try:
+        addon_data = xbmcvfs.translatePath(
+            'special://profile/addon_data/plugin.program.akl/'
+        )
+
+        last_collection_file = os.path.join(
+            addon_data, 'last_viewed_collection.txt'
+        )
+        return_file = os.path.join(
+            addon_data, 'pending_collection_return.txt'
+        )
+
+        if os.path.isfile(last_collection_file):
+            with open(last_collection_file, 'r', encoding='utf-8') as handle:
+                collection_url = handle.read().strip()
+
+            if re.fullmatch(
+                r'plugin://plugin\.program\.akl/collection/[A-Za-z0-9_-]+/?',
+                collection_url
+            ):
+                with open(return_file, 'w', encoding='utf-8') as handle:
+                    handle.write(collection_url)
+
+                logger.info(
+                    'AKL collection return: pending %s', collection_url
+                )
+            else:
+                logger.warning(
+                    'AKL collection return: invalid URL %s', collection_url
+                )
+        else:
+            logger.info('AKL collection return: no tracked collection')
+    except Exception:
+        logger.exception('AKL collection return: unable to queue return')
     selected_launcher.launch(rom)
     AppMediator.async_cmd('ROM_WAS_LAUNCHED', args)

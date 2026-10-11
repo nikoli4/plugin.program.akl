@@ -2,6 +2,10 @@ import threading
 import logging
 import sys
 import json
+import os
+import re
+
+import xbmcvfs
 
 from datetime import datetime
 from distutils.version import LooseVersion
@@ -72,6 +76,10 @@ class AppService(object):
                 
         logger.debug("Processing service events")
         kodi.set_windowprop('akl_server_state', 'STARTED')
+
+        # Restore an AKL collection after an external game launcher restarts Kodi.
+        self._restore_pending_collection()
+
         while not self.monitor.abortRequested():
             
             self.monitor.process_events()
@@ -85,6 +93,83 @@ class AppService(object):
     
         self.shutdown()
 
+    def _restore_pending_collection(self):
+        try:
+            addon_data = xbmcvfs.translatePath(
+                'special://profile/addon_data/plugin.program.akl/'
+            )
+            return_file = os.path.join(
+                addon_data, 'pending_collection_return.txt'
+            )
+
+            if not os.path.isfile(return_file):
+                return
+
+            with open(return_file, 'r', encoding='utf-8') as handle:
+                collection_url = handle.read().strip()
+
+            if not re.fullmatch(
+                r'plugin://plugin\.program\.akl/collection/[A-Za-z0-9_-]+/?',
+                collection_url
+            ):
+                logger.warning(
+                    'AKL collection restore: invalid URL %s', collection_url
+                )
+                os.remove(return_file)
+                return
+
+            logger.info(
+                'AKL collection restore: waiting for Kodi UI %s',
+                collection_url
+            )
+
+            # Give Kodi and the skin time to finish their startup.
+            for attempt in range(60):
+                if self.monitor.abortRequested():
+                    return
+
+                if xbmc.getCondVisibility('Window.IsActive(home)'):
+                    break
+
+                if self.monitor.waitForAbort(0.5):
+                    return
+            else:
+                logger.warning(
+                    'AKL collection restore: home window not detected'
+                )
+                return
+
+            # Short grace period for skin startup actions.
+            if self.monitor.waitForAbort(2.0):
+                return
+
+            request = {
+                'jsonrpc': '2.0',
+                'method': 'GUI.ActivateWindow',
+                'params': {
+                    'window': 'programs',
+                    'parameters': [collection_url]
+                },
+                'id': 1
+            }
+
+            response = json.loads(xbmc.executeJSONRPC(json.dumps(request)))
+
+            if 'error' in response:
+                logger.error(
+                    'AKL collection restore: JSON-RPC error %s',
+                    response['error']
+                )
+                return
+
+            os.remove(return_file)
+
+            logger.info(
+                'AKL collection restore: activated %s', collection_url
+            )
+
+        except Exception:
+            logger.exception('AKL collection restore: failed')
     def shutdown(self):
         logger.debug("Shutting down AKL service")
         kodi.set_windowprop('akl_server_state', 'STOPPING')
