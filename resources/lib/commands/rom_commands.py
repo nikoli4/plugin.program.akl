@@ -512,7 +512,7 @@ def cmd_rom_metadata_nplayers_online(args):
     
         if selected_option == 1:
             # >> Manual entry. Open a number entry dialog.
-            if not editors.edit_field_by_int(rom, kodi.translate(40809), rom.get_number_of_players, rom.set_number_of_players):
+            if not editors.edit_field_by_int(rom, kodi.translate(40809), rom.get_number_of_players_online, rom.set_number_of_players_online):
                 AppMediator.sync_cmd(ROM_EDIT_METADATA, args)
                 return
 

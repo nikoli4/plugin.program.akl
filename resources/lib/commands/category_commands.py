@@ -46,6 +46,10 @@ def cmd_add_item(args):
         kodi.translate(44108),
         kodi.translate(44109)
     )
+    options['REVIEW_AKL_COMPONENT_SETUP'] = kodi.get_listitem(
+        kodi.translate(44171),
+        kodi.translate(44172)
+    )
 
     options['ADD_SOURCE'] = kodi.get_listitem(kodi.translate(42506), kodi.translate(44034))
     options['ADD_LAUNCHER'] = kodi.get_listitem(kodi.translate(42514), kodi.translate(44035))

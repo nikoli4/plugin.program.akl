@@ -1,283 +1,1453 @@
 import threading
+
+
+
 import logging
+
+
+
 import sys
+
+
+
 import json
+
+
+
 import os
+
+
+
 import re
+
+
+
+
+
+
 
 import xbmcvfs
 
+
+
+
+
+
+
 from datetime import datetime
+
+
+
 from distutils.version import LooseVersion
+
+
+
+
+
+
 
 import xbmc
 
+
+
+
+
+
+
 from resources.lib import globals
+
+
+
 from resources.lib.repositories import UnitOfWork
+
+
+
 from resources.lib.webservice import WebService
+
+
+
 from resources.lib.commands.mediator import AppMediator
+
+
+
 import resources.lib.commands
-        
+
+
+
+
+
+
+
 from akl.utils import io, kodi
+
+
+
 from akl import settings
+
+
+
+
+
+
 
 logger = logging.getLogger(__name__)
 
 
+
+
+
+
+
+
+
+
+
+def _verify_managed_steam_launch_ack(addon_data_dir, launch_id, rom_id):
+
+
+    """Check whether managed Steam launch bookkeeping completed."""
+
+
+    if not isinstance(addon_data_dir, str) or not addon_data_dir.strip():
+
+
+        return False
+
+
+
+
+
+    if not isinstance(launch_id, str) or not re.fullmatch(
+
+
+        r"[A-Za-z0-9_-]{1,128}", launch_id
+
+
+    ):
+
+
+        return False
+
+
+
+
+
+    if not isinstance(rom_id, str) or not rom_id:
+
+
+        return False
+
+
+
+
+
+    path = os.path.join(
+
+
+        addon_data_dir,
+
+
+        "managed_launch_ack_{}.json".format(launch_id)
+
+
+    )
+
+
+
+
+
+    try:
+
+
+        with open(path, "r", encoding="utf-8-sig") as handle:
+
+
+            payload = json.load(handle)
+
+
+    except (OSError, ValueError, UnicodeError):
+
+
+        return False
+
+
+
+
+
+    return (
+
+
+        isinstance(payload, dict)
+
+
+        and payload.get("launch_id") == launch_id
+
+
+        and payload.get("rom_id") == rom_id
+
+
+        and payload.get("status") == "complete"
+
+
+    )
+
+
+
+
+
+
+
+
 class AppService(object):
+
+
+
+
+
+
 
     def __init__(self):
 
+
+
+
+
+
+
         threading.Thread.name = 'akl'
+
+
+
+
+
+
 
         globals.g_bootstrap_instances()
 
+
+
+
+
+
+
         self.queue = []
+
+
+
         self.monitor = AppMonitor(addon_id=globals.addon_id, action=self.queue.append)
 
+
+
+
+
+
+
     def _execute_service_actions(self, action_data):
+
+
+
         cmd = action_data['action']
+
+
+
         args = action_data['data']
+
+
+
         AppMediator.sync_cmd(cmd, args)
 
+
+
+
+
+
+
     def run(self):
+
+
+
         kodi.set_windowprop('akl_server_state', 'STARTING')
+
+
+
         os_name = io.is_which_os()
 
+
+
+
+
+
+
         # --- Some debug stuff for development ---
+
+
+
         logger.info('------------ Called Advanced Kodi Launcher : Service ------------')
+
+
+
         logger.debug(f'sys.platform   "{sys.platform}"')
+
+
+
         logger.debug(f'OS             "{os_name}"')
+
+
+
         logger.debug('Python version "' + sys.version.replace('\n', '') + '"')
+
+
+
         logger.debug(f'addon.id       "{globals.addon_id}"')
+
+
+
         logger.debug(f'addon.version  "{globals.addon_version}"')
+
+
+
         logger.debug("Starting AKL service")
 
+
+
+
+
+
+
         uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
+
+
+
         if not uow.check_database():
+
+
+
             logger.info("No database present. Going to create database file.")
+
+
+
             self._initial_setup(uow)
-            
+
+
+
+
+
+
+
         db_version = uow.get_database_version()
+
+
+
         logger.debug(f'db.version       "{db_version}"')
+
+
+
         if db_version is None or LooseVersion(db_version) < LooseVersion(globals.addon_version):
+
+
+
             try:
+
+
+
                 self._do_version_upgrade(uow, LooseVersion(db_version))
+
+
+
             except Exception:
+
+
+
                 logger.exception("Failure while doing database migration")
+
+
+
                 kodi.notify_error(kodi.translate(40954))
-        
+
+
+
+
+
+
+
         if self._last_time_scanned_is_too_long_ago():
+
+
+
             self._perform_scans()
- 
+
+
+
+
+
+
+
         # WEBSERVICE
+
+
+
         self.webservice = WebService()
+
+
+
         self.webservice.start()
-                
+
+
+
+
+
+
+
         logger.debug("Processing service events")
+
+
+
         kodi.set_windowprop('akl_server_state', 'STARTED')
 
+
+
+
+
+
+
         # Restore an AKL collection after an external game launcher restarts Kodi.
+
+
+
+        # Complete verified Steam launch bookkeeping before restoring the UI.
+        try:
+            self._process_pending_managed_steam_launches()
+        except Exception:
+            logger.exception(
+                'Managed Steam startup: unexpected processing failure'
+            )
+
         self._restore_pending_collection()
 
+
+
+
+
+
+
         while not self.monitor.abortRequested():
-            
+
+
+
+
+
+
+
             self.monitor.process_events()
+
+
+
             while len(self.queue) and (not self.monitor.abortRequested()):
+
+
+
                 data = self.queue.pop(0)
+
+
+
                 self._execute_service_actions(data)
 
+
+
+
+
+
+
             if self.monitor.waitForAbort(0.5):
+
+
+
                 # abort requested, end service
+
+
+
                 break
-    
+
+
+
+
+
+
+
         self.shutdown()
 
-    def _restore_pending_collection(self):
+
+
+
+
+
+
+    def _process_pending_managed_steam_launches(self):
+
+        """Process verified Steam startup records after Kodi restarts."""
+
         try:
+
+            from resources.lib.commands.stats_commands import (
+
+                _read_managed_steam_started
+
+            )
+
+
+
             addon_data = xbmcvfs.translatePath(
+
                 'special://profile/addon_data/plugin.program.akl/'
+
             )
+
+
+
+            if not isinstance(addon_data, str) or not os.path.isdir(addon_data):
+
+                return
+
+
+
+            prefix = 'managed_steam_started_'
+
+            suffix = '.json'
+
+
+
+            with os.scandir(addon_data) as entries:
+
+                candidates = sorted(
+
+                    entry.name
+
+                    for entry in entries
+
+                    if entry.name.startswith(prefix)
+
+                    and entry.name.endswith(suffix)
+
+                    and entry.is_file(follow_symlinks=False)
+
+                )
+
+
+
+            pending_processed = 0
+
+
+
+            for filename in candidates:
+
+                if self.monitor.abortRequested():
+
+                    return
+
+
+
+                try:
+
+                    launch_id = filename[len(prefix):-len(suffix)]
+
+
+
+                    if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', launch_id):
+
+                        logger.warning(
+
+                            'Managed Steam startup: invalid launch filename %s',
+
+                            filename
+
+                        )
+
+                        continue
+
+
+
+                    path = os.path.join(addon_data, filename)
+
+
+
+                    with open(path, 'r', encoding='utf-8-sig') as handle:
+
+                        payload = json.load(handle)
+
+
+
+                    if not isinstance(payload, dict):
+
+                        logger.warning(
+
+                            'Managed Steam startup: invalid record %s',
+
+                            filename
+
+                        )
+
+                        continue
+
+
+
+                    rom_id = payload.get('rom_id')
+
+
+
+                    if not isinstance(rom_id, str) or not rom_id:
+
+                        logger.warning(
+
+                            'Managed Steam startup: missing ROM ID for %s',
+
+                            launch_id
+
+                        )
+
+                        continue
+
+
+
+                    confirmation = _read_managed_steam_started(
+
+                        addon_data, launch_id, rom_id
+
+                    )
+
+
+
+                    if confirmation is None:
+
+                        logger.warning(
+
+                            'Managed Steam startup: unverified record %s',
+
+                            launch_id
+
+                        )
+
+                        continue
+
+
+
+                    if _verify_managed_steam_launch_ack(
+
+                        addon_data, launch_id, rom_id
+
+                    ):
+
+                        continue
+
+
+
+                    if pending_processed >= 100:
+                        logger.warning(
+                            'Managed Steam startup: pending processing limit reached'
+                        )
+                        break
+
+                    pending_processed += 1
+
+                    AppMediator.sync_cmd(
+
+                        'MANAGED_STEAM_ROM_WAS_LAUNCHED',
+
+                        {
+
+                            'launch_id': launch_id,
+
+                            'rom_id': rom_id
+
+                        }
+
+                    )
+
+
+
+                    if not _verify_managed_steam_launch_ack(
+
+                        addon_data, launch_id, rom_id
+
+                    ):
+
+                        logger.warning(
+
+                            'Managed Steam startup: bookkeeping not acknowledged for %s',
+
+                            launch_id
+
+                        )
+
+
+
+                except Exception:
+
+                    logger.exception(
+
+                        'Managed Steam startup: failed processing %s',
+
+                        filename
+
+                    )
+
+
+
+        except Exception:
+
+            logger.exception(
+
+                'Managed Steam startup: deferred processing failed'
+
+            )
+
+
+
+    def _restore_pending_collection(self):
+
+
+
+        try:
+
+
+
+            addon_data = xbmcvfs.translatePath(
+
+
+
+                'special://profile/addon_data/plugin.program.akl/'
+
+
+
+            )
+
+
+
             return_file = os.path.join(
+
+
+
                 addon_data, 'pending_collection_return.txt'
+
+
+
             )
+
+
+
+
+
+
 
             if not os.path.isfile(return_file):
+
+
+
                 return
+
+
+
+
+
+
 
             with open(return_file, 'r', encoding='utf-8') as handle:
+
+
+
                 collection_url = handle.read().strip()
 
+
+
+
+
+
+
             if not re.fullmatch(
+
+
+
                 r'plugin://plugin\.program\.akl/collection/[A-Za-z0-9_-]+/?',
+
+
+
                 collection_url
+
+
+
             ):
+
+
+
                 logger.warning(
+
+
+
                     'AKL collection restore: invalid URL %s', collection_url
+
+
+
                 )
+
+
+
                 os.remove(return_file)
+
+
+
                 return
+
+
+
+
+
+
 
             logger.info(
+
+
+
                 'AKL collection restore: waiting for Kodi UI %s',
+
+
+
                 collection_url
+
+
+
             )
 
+
+
+
+
+
+
             # Give Kodi and the skin time to finish their startup.
+
+
+
             for attempt in range(60):
+
+
+
                 if self.monitor.abortRequested():
+
+
+
                     return
+
+
+
+
+
+
 
                 if xbmc.getCondVisibility('Window.IsActive(home)'):
+
+
+
                     break
 
+
+
+
+
+
+
                 if self.monitor.waitForAbort(0.5):
+
+
+
                     return
+
+
+
             else:
+
+
+
                 logger.warning(
+
+
+
                     'AKL collection restore: home window not detected'
+
+
+
                 )
+
+
+
                 return
+
+
+
+
+
+
 
             # Short grace period for skin startup actions.
+
+
+
             if self.monitor.waitForAbort(2.0):
+
+
+
                 return
 
+
+
+
+
+
+
             request = {
+
+
+
                 'jsonrpc': '2.0',
+
+
+
                 'method': 'GUI.ActivateWindow',
+
+
+
                 'params': {
+
+
+
                     'window': 'programs',
+
+
+
                     'parameters': [collection_url]
+
+
+
                 },
+
+
+
                 'id': 1
+
+
+
             }
+
+
+
+
+
+
 
             response = json.loads(xbmc.executeJSONRPC(json.dumps(request)))
 
+
+
+
+
+
+
             if 'error' in response:
+
+
+
                 logger.error(
+
+
+
                     'AKL collection restore: JSON-RPC error %s',
+
+
+
                     response['error']
+
+
+
                 )
+
+
+
                 return
+
+
+
+
+
+
 
             os.remove(return_file)
 
+
+
+
+
+
+
             logger.info(
+
+
+
                 'AKL collection restore: activated %s', collection_url
+
+
+
             )
 
+
+
+
+
+
+
         except Exception:
+
+
+
             logger.exception('AKL collection restore: failed')
+
+
+
     def shutdown(self):
+
+
+
         logger.debug("Shutting down AKL service")
+
+
+
         kodi.set_windowprop('akl_server_state', 'STOPPING')
-        
+
+
+
+
+
+
+
         self.webservice.stop()
+
+
+
         del self.monitor
+
+
+
         del self.webservice
-        
+
+
+
+
+
+
+
         kodi.set_windowprop('akl_server_state', 'STOPPED')
+
+
+
         logger.debug("AKL service stopped")
-        
+
+
+
+
+
+
+
     def _initial_setup(self, uow: UnitOfWork):
+
+
+
         kodi.notify(kodi.translate(40981))
+
+
+
         uow.create_empty_database(globals.g_PATHS.DATABASE_SCHEMA_PATH)
+
+
+
         logger.info("Database created.")
-        
+
+
+
+
+
+
+
         self._perform_scans()
 
+
+
+
+
+
+
     def _do_version_upgrade(self, uow: UnitOfWork, db_version: LooseVersion):
+
+
+
         migrations_files_to_execute = uow.get_migration_files(db_version)
+
+
+
         if len(migrations_files_to_execute) == 0:
+
+
+
             logger.debug('No migrations to execute')
+
+
+
             return
-        
+
+
+
+
+
+
+
         migrations_executed = uow.get_migrations_history()
+
+
+
         executed_files = [f["migration_file"] for f in migrations_executed if f["applied"] == 1]
+
+
+
         new_migration_files_to_execute = [f for f in migrations_files_to_execute if f.getBase() not in executed_files]
 
+
+
+
+
+
+
         logger.info(f"Found {len(new_migration_files_to_execute)} migration files to process.")
+
+
+
         if len(new_migration_files_to_execute) == 0:
+
+
+
             logger.debug('No new migrations to execute')
+
+
+
             return
-        
+
+
+
+
+
+
+
         version_to_store = LooseVersion(globals.addon_version)
+
+
+
         file_version = uow.get_version_from_migration_file(new_migration_files_to_execute[-1])
+
+
+
         if file_version > version_to_store:
+
+
+
             version_to_store = file_version
 
+
+
+
+
+
+
         uow.migrate_database(new_migration_files_to_execute, version_to_store)
-    
+
+
+
+
+
+
+
     def _perform_scans(self):
+
+
+
         # SCAN FOR ADDONS
+
+
+
         self._execute_service_actions({'action': 'SCAN_FOR_ADDONS', 'data': None})
-        
+
+
+
+
+
+
+
         # REBUILD VIEWS
+
+
+
         modification_time = self._get_modification_timestamp()
+
+
+
         self._execute_service_actions({'action': 'RENDER_VIEWS', 'data': {
+
+
+
             'force': False,
+
+
+
             'changed_since_date': modification_time
+
+
+
         }})
+
+
+
         # Write to scan indicator
+
+
+
         globals.g_PATHS.SCAN_INDICATOR_FILE.writeAll(f'last scan all on {datetime.now()} ')
 
+
+
+
+
+
+
     def _last_time_scanned_is_too_long_ago(self):
+
+
+
         if not globals.g_PATHS.SCAN_INDICATOR_FILE.exists():
+
+
+
             return True
-        
+
+
+
+
+
+
+
         min_days_ago = settings.getSettingAsInt('regeneration_days_period')
+
+
+
         if not min_days_ago or min_days_ago == 0:
+
+
+
             logger.info('Automatic scan and view generation disabled.')
+
+
+
             return
-        
+
+
+
+
+
+
+
         modification_time = self._get_modification_timestamp()
+
+
+
         if modification_time is not None:
+
+
+
             then = modification_time.toordinal()
+
+
+
             now = datetime.now().toordinal()
+
+
+
             too_long_ago = (now - then) >= min_days_ago
+
+
+
         else:
+
+
+
             too_long_ago = True
-        
+
+
+
+
+
+
+
         if too_long_ago:
+
+
+
             logger.info(f'Triggering automatic scan and view generation. Last scan was {now-then} days ago')
+
+
+
         else:
+
+
+
             logger.info(f'Skipping automatic scan and view generation. Last scan was {now-then} days ago')
+
+
+
         return too_long_ago
 
+
+
+
+
+
+
     def _get_modification_timestamp(self):
+
+
+
         if not globals.g_PATHS.SCAN_INDICATOR_FILE.exists():
+
+
+
             return None
+
+
+
         modification_timestamp = globals.g_PATHS.SCAN_INDICATOR_FILE.stat().st_mtime
+
+
+
         modification_time = datetime.fromtimestamp(modification_timestamp)
-        
+
+
+
+
+
+
+
         return modification_time
-        
+
+
+
+
+
+
+
+
+
+
 
 class AppMonitor(xbmc.Monitor):
-    
+
+
+
+
+
+
+
     def __init__(self, *args, **kwargs):
+
+
+
         self.addon_id = kwargs['addon_id']
+
+
+
         self.action = kwargs['action']
+
+
+
         logger.debug("[AKL Monitor] Initalized.")
 
+
+
+
+
+
+
     def process_events(self):
+
+
+
         pass
 
+
+
+
+
+
+
     def onNotification(self, sender, method, data):
+
+
+
         if sender != self.addon_id:
+
+
+
             return
 
+
+
+
+
+
+
         logger.info(data)
+
+
+
         data_obj = None
+
+
+
         try:
+
+
+
             data_obj = json.loads(data)
+
+
+
         except Exception:
+
+
+
             logger.error('Failed to load arguments as json')
 
+
+
+
+
+
+
         action_data = {
+
+
+
             'action': method.split('.')[1].upper(),
+
+
+
             'data': data_obj
+
+
+
         }
+
+
+
         self.action(action_data)

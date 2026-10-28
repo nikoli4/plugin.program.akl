@@ -1753,6 +1753,9 @@ class AklAddonRepository(object):
         self._uow.execute(qry.SELECT_LAUNCHER_ADDONS)
         result_set = self._uow.result_set()
         for addon_data in result_set:
+            # Managed launching enhances existing launchers; it is not a launcher type.
+            if addon_data['addon_id'] == 'script.akl.managedlauncher':
+                continue
             yield AklAddon(addon_data)
 
     def find_all_scanner_addons(self) -> typing.Iterator[AklAddon]:

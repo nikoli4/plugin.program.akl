@@ -24,6 +24,7 @@ import os
 import re
 
 import xbmc
+import xbmcaddon
 import xbmcvfs
 
 from akl.utils import kodi
@@ -56,9 +57,8 @@ def cmd_add_launcher(args):
     selected_option: AklAddon = kodi.OrdDictionaryDialog().select(s, options)
     
     if selected_option is None:
-        # >> Exits context menu
-        logger.debug('Selected None. Closing context menu')
-        AppMediator.sync_cmd('EDIT_ROM_LAUNCHERS', args)
+        # Standalone Add Launcher has no parent ROM menu.
+        logger.debug('ADD_LAUNCHER: Cancelled.')
         return
     
     # >> Execute subcommand. May be atomic, maybe a submenu.
@@ -675,6 +675,63 @@ def cmd_launch_random_rom(args):
 # -------------------------------------------------------------------------------------------------
 # ROMCollection Launcher executing
 # -------------------------------------------------------------------------------------------------
+def _managed_windows_addon_available():
+    """Check whether Kodi has the optional managed launcher enabled."""
+    try:
+        response = kodi.jsonrpc_query(
+            'Addons.GetAddons',
+            params={
+                'installed': True,
+                'enabled': True,
+                'type': 'xbmc.python.script'
+            }
+        )
+        addons = response.get('result', {}).get('addons', [])
+        return any(
+            addon.get('addonid') == 'script.akl.managedlauncher'
+            for addon in addons
+        )
+    except Exception:
+        logger.exception('Managed Windows Launcher availability check failed')
+        return False
+
+def _new_managed_launch_id():
+    """Generate a unique identifier for one managed ROM launch."""
+    import uuid
+    return uuid.uuid4().hex
+
+def _dispatch_managed_launch_stats(managed_stats_args):
+    """Request managed bookkeeping without treating dispatch as completion."""
+    if not isinstance(managed_stats_args, dict):
+        raise ValueError('Managed launch arguments must be a dictionary')
+
+    rom_id = managed_stats_args.get('rom_id')
+    launch_id = managed_stats_args.get('launch_id')
+
+    if not isinstance(rom_id, str) or not rom_id:
+        raise ValueError('Managed launch requires a ROM ID')
+
+    import re
+    if not isinstance(launch_id, str) or not re.fullmatch(
+        r'[A-Za-z0-9_-]{1,128}', launch_id
+    ):
+        raise ValueError('Managed launch requires a valid launch ID')
+
+    AppMediator.async_cmd(
+        'MANAGED_ROM_WAS_LAUNCHED',
+        {
+            'rom_id': rom_id,
+            'launch_id': launch_id
+        }
+    )
+
+def _dispatch_launch_stats(managed_enabled, managed_stats_args, legacy_args):
+    """Dispatch exactly one statistics command for a launched ROM."""
+    if managed_enabled:
+        _dispatch_managed_launch_stats(managed_stats_args)
+    else:
+        AppMediator.async_cmd('ROM_WAS_LAUNCHED', legacy_args)
+
 @AppMediator.register('EXECUTE_ROM')
 def cmd_execute_rom_with_launcher(args):
     rom_id: str = args['rom_id'] if 'rom_id' in args else None
@@ -741,6 +798,73 @@ def cmd_execute_rom_with_launcher(args):
     if selected_launcher is None:
         return
     
+    # Managed Windows launch diagnostic (no behavior change).
+    selected_addon_id = selected_launcher.get_addon().get_addon_id()
+    managed_requested = (
+        selected_addon_id == 'script.akl.managedlauncher'
+        or (
+            selected_addon_id == 'script.akl.defaults'
+            and selected_launcher.get_setting('managed_windows_launch', False) is True
+        )
+    )
+    managed_enabled = (
+        managed_requested and _managed_windows_addon_available()
+    )
+
+    # Steam uses its own App ID resolver and requires a dedicated managed
+    # execution path. Detect opt-in now, but do not activate it until ready.
+    steam_managed_requested = (
+        selected_addon_id == 'script.akl.steam'
+        and selected_launcher.get_setting('managed_windows_launch', False) is True
+    )
+    steam_managed_enabled = (
+        steam_managed_requested and _managed_windows_addon_available()
+    )
+    if steam_managed_requested and not steam_managed_enabled:
+        logger.warning(
+            'Managed Steam Launch requested but managed helper is unavailable'
+        )
+    logger.info(
+        'Managed Windows Launch diagnostic: enabled=%s, launcher=%s',
+        managed_enabled,
+        selected_launcher.get_name()
+    )
+    # Generate a fresh ID only for opted-in managed launches.
+    managed_launch_id = None
+    if managed_enabled or steam_managed_enabled:
+        managed_launch_id = _new_managed_launch_id()
+        logger.info(
+            'Managed Windows Launch prepared: launch_id=%s, rom_id=%s',
+            managed_launch_id,
+            rom_id
+        )
+
+    # Prepare managed bookkeeping arguments without dispatching them yet.
+    managed_stats_args = None
+    if managed_launch_id is not None:
+        managed_stats_args = {
+            'rom_id': rom_id,
+            'launch_id': managed_launch_id
+        }
+
+    # Preserve existing behavior for non-managed launchers. Managed Windows
+    # launches can disable returning to the last viewed AKL collection.
+    queue_collection_return = True
+    if managed_enabled or steam_managed_enabled:
+        try:
+            managed_addon = xbmcaddon.Addon(
+                'script.akl.managedlauncher'
+            )
+            queue_collection_return = managed_addon.getSettingBool(
+                'return_to_last_collection'
+            )
+        except Exception:
+            logger.exception(
+                'Managed collection return: unable to read setting; '
+                'preserving default enabled behavior'
+            )
+            queue_collection_return = True
+
     # Request a one-time return to the last viewed AKL collection.
     try:
         addon_data = xbmcvfs.translatePath(
@@ -754,7 +878,13 @@ def cmd_execute_rom_with_launcher(args):
             addon_data, 'pending_collection_return.txt'
         )
 
-        if os.path.isfile(last_collection_file):
+        if not queue_collection_return:
+            if os.path.isfile(return_file):
+                os.remove(return_file)
+            logger.info(
+                'Managed collection return: disabled; Kodi will open normally'
+            )
+        elif os.path.isfile(last_collection_file):
             with open(last_collection_file, 'r', encoding='utf-8') as handle:
                 collection_url = handle.read().strip()
 
@@ -776,5 +906,22 @@ def cmd_execute_rom_with_launcher(args):
             logger.info('AKL collection return: no tracked collection')
     except Exception:
         logger.exception('AKL collection return: unable to queue return')
-    selected_launcher.launch(rom)
-    AppMediator.async_cmd('ROM_WAS_LAUNCHED', args)
+    if managed_enabled:
+        launch_command = selected_launcher.get_launch_command(rom)
+        launch_command['--managed_launch_id'] = managed_launch_id
+        kodi.run_script(
+            'script.akl.managedlauncher',
+            launch_command
+        )
+    elif steam_managed_enabled:
+        launch_command = selected_launcher.get_launch_command(rom)
+        launch_command['--managed_launch_id'] = managed_launch_id
+        kodi.run_script(
+            'script.akl.steam',
+            launch_command
+        )
+    else:
+        selected_launcher.launch(rom)
+
+    if not steam_managed_enabled:
+        _dispatch_launch_stats(managed_enabled, managed_stats_args, args)

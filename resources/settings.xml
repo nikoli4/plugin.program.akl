@@ -423,6 +423,17 @@
                     <default>false</default>
                     <control type="toggle"/>
                 </setting>
+                <setting id="setup_wizard_notice_version" type="integer" label="44041" help="">
+                    <level>3</level>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>0</minimum>
+                        <maximum>999</maximum>
+                    </constraints>
+                    <control type="edit" format="integer">
+                        <heading>44041</heading>
+                    </control>
+                </setting>
             </group>
         </category>
     </section>

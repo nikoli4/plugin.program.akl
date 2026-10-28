@@ -2202,13 +2202,13 @@ class ROM(MetaDataItemABC):
         if constants.META_NPLAYERS_ID in metadata_to_update \
             and api_rom_obj.get_number_of_players() \
             and (overwrite_existing_metadata or
-                 _is_empty_or_default(self.get_number_of_players(), constants.DEFAULT_META_NPLAYERS)):
+                 (self.get_number_of_players() == 0 or _is_empty_or_default(self.get_number_of_players(), constants.DEFAULT_META_NPLAYERS))):
             self.set_number_of_players(api_rom_obj.get_number_of_players())
 
         if constants.META_NPLAYERS_ONLINE_ID in metadata_to_update \
             and api_rom_obj.get_number_of_players_online() \
             and (overwrite_existing_metadata or
-                 _is_empty_or_default(self.get_number_of_players_online(), constants.DEFAULT_META_NPLAYERS)):
+                 (self.get_number_of_players_online() == 0 or _is_empty_or_default(self.get_number_of_players_online(), constants.DEFAULT_META_NPLAYERS))):
             self.set_number_of_players_online(api_rom_obj.get_number_of_players_online())
 
         if constants.META_ESRB_ID in metadata_to_update\

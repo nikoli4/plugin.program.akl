@@ -1,3 +1,19 @@
+## 1.7.6
+
+- Added Managed Windows Launcher integration for supported emulators and Steam games.
+- Added verified managed launch tracking to improve play counts and Recently Played and Most Played updates.
+- Added recovery of pending managed Steam launch statistics when Kodi restarts.
+- Added automatic restoration of the last-viewed AKL collection after exiting a game and reopening Kodi.
+- Redesigned the Setup Assistant with component, launcher, scraper, and optional skin selection.
+- Added Review Component Setup to the Add menu so component settings can be revisited without resetting initial setup.
+- Added version-aware Setup Assistant invitations for existing installations, with options to review, postpone, or dismiss.
+- Improved setup and configuration of optional launcher and scraper integrations.
+- Applied configured default emulator and ROM directories when manually creating launchers and sources.
+- Improved default artwork directory handling, including automatic source-specific artwork folders.
+- Preserved manually selected artwork directories when no default artwork root is configured.
+- Preserved existing ROM source paths when editing sources.
+- Improved source setup and removed temporary diagnostic logging.
+
 ## 1.7.5
 
 - Added automatic restoration of the last-viewed AKL collection when Kodi restarts after launching a game.

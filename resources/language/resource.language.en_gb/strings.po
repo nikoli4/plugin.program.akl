@@ -2886,3 +2886,12 @@ msgstr ""
 msgctxt "#44170"
 msgid "Select the parent directory where AKL will store game artwork. When a new system is created, AKL automatically creates a folder named for that system inside this directory, along with the required artwork subfolders. When a default artwork directory is configured, you will not be asked to select an artwork directory each time you create a new system."
 msgstr ""
+
+# Review AKL component setup
+msgctxt "#44171"
+msgid "Review Component Setup"
+msgstr ""
+
+msgctxt "#44172"
+msgid "Review optional launchers, scrapers, skins, and AKL components"
+msgstr ""

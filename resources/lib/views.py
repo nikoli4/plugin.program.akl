@@ -103,6 +103,36 @@ def vw_route_render_root():
             'FIRST_RUN_SETUP',
             {}
         )
+    else:
+        try:
+            wizard_notice_version = int(
+                settings.getSetting('setup_wizard_notice_version') or '0'
+            )
+        except (TypeError, ValueError):
+            wizard_notice_version = 0
+
+        if wizard_notice_version < 2:
+            home_window = xbmcgui.Window(10000)
+            guard_key = 'AKL.SetupWizard.UpgradeNoticePending'
+            deferred_key = 'AKL.SetupWizard.UpgradeNoticeDeferred'
+
+            if (
+                home_window.getProperty(guard_key) != 'true'
+                and home_window.getProperty(deferred_key) != 'true'
+            ):
+                home_window.setProperty(guard_key, 'true')
+
+                try:
+                    logger.info(
+                        'SETUP_UPGRADE: Queuing versioned wizard invitation.'
+                    )
+                    AppMediator.async_cmd(
+                        'SETUP_WIZARD_UPGRADE_NOTICE',
+                        {}
+                    )
+                except Exception:
+                    home_window.clearProperty(guard_key)
+                    raise
 
     container = viewqueries.qry_get_root_items()
     container_context_items = viewqueries.qry_container_context_menu_items(container)

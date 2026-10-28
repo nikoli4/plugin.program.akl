@@ -11,6 +11,7 @@ import collections
 
 import xbmc
 import xbmcaddon
+import xbmcgui
 
 from akl import settings
 from akl.utils import kodi
@@ -56,7 +57,7 @@ def _get_component_status(addon_id):
     }
 
 
-def _configure_scraper_credentials(selected_scrapers):
+def _configure_scraper_credentials(selected_scrapers, selected_components=None):
     """Offer configuration for selected scrapers that require credentials."""
 
     scraper_credentials = {
@@ -81,9 +82,36 @@ def _configure_scraper_credentials(selected_scrapers):
                 'Would you like to configure TheGamesDB now?'
             ),
         },
+        'script.akl.steam': {
+            'name': 'Steam',
+            'settings': (
+                'steam-api-key',
+            ),
+            'message': (
+                'Steam requires a Steam Web API key to scan your '
+                'Steam game library.\n\n'
+                'Would you like to configure Steam now?'
+            ),
+        },
+        'script.akl.steamgriddb': {
+            'name': 'SteamGridDB',
+            'settings': (
+                'scraper_steamgriddb_apikey',
+            ),
+            'message': (
+                'SteamGridDB requires an API key to download '
+                'game artwork.\n\n'
+                'Would you like to configure SteamGridDB now?'
+            ),
+        },
     }
 
-    for addon_id in selected_scrapers:
+    selected_addons = list(selected_scrapers)
+
+    if selected_components:
+        selected_addons.extend(selected_components)
+
+    for addon_id in selected_addons:
         if addon_id not in scraper_credentials:
             continue
 
@@ -143,6 +171,99 @@ def _configure_scraper_credentials(selected_scrapers):
             )
 
 
+@AppMediator.register('SETUP_WIZARD_UPGRADE_NOTICE')
+def cmd_setup_wizard_upgrade_notice(args):
+    try:
+        return _run_setup_wizard_upgrade_notice(args)
+    finally:
+        xbmcgui.Window(10000).clearProperty(
+            'AKL.SetupWizard.UpgradeNoticePending'
+        )
+
+
+def _run_setup_wizard_upgrade_notice(args):
+    """Offer the redesigned Setup Wizard once to existing users."""
+    current_version = 2
+
+    try:
+        notice_version = int(
+            settings.getSetting('setup_wizard_notice_version') or '0'
+        )
+    except (TypeError, ValueError):
+        notice_version = 0
+
+    if notice_version >= current_version:
+        logger.info(
+            'SETUP_UPGRADE: Version %s already offered.',
+            current_version
+        )
+        return
+
+    logger.info(
+        'SETUP_UPGRADE: Offering redesigned Setup Wizard version %s.',
+        current_version
+    )
+
+    message = (
+        'The AKL Revival Setup Wizard has been updated with '
+        'Launchers & Integrations, artwork scrapers, '
+        'and optional skins.\n\n'
+        'Would you like to review the new setup options?\n\n'
+        'You can reopen the Setup Wizard later from AKL Revival.'
+    )
+
+    options = collections.OrderedDict()
+    options['REVIEW'] = 'Review Setup Wizard'
+    options['NOT_NOW'] = 'Not Now'
+    options['DONT_ASK'] = "Don't Ask Again"
+
+    selected = kodi.OrdDictionaryDialog().select(
+        message,
+        options
+    )
+
+    if selected is None:
+        xbmcgui.Window(10000).setProperty(
+            'AKL.SetupWizard.UpgradeNoticeDeferred',
+            'true'
+        )
+        logger.info(
+            'SETUP_UPGRADE: Invitation cancelled; deferred until next session.'
+        )
+        return
+
+    if selected == 'NOT_NOW':
+        xbmcgui.Window(10000).setProperty(
+            'AKL.SetupWizard.UpgradeNoticeDeferred',
+            'true'
+        )
+        logger.info(
+            'SETUP_UPGRADE: User deferred invitation until next session.'
+        )
+        return
+
+    if selected not in ('REVIEW', 'DONT_ASK'):
+        logger.warning(
+            'SETUP_UPGRADE: Unexpected selection %r.',
+            selected
+        )
+        return
+
+    settings.setSetting(
+        'setup_wizard_notice_version',
+        str(current_version)
+    )
+
+    if selected == 'REVIEW':
+        logger.info(
+            'SETUP_UPGRADE: User accepted the upgrade invitation.'
+        )
+        AppMediator.sync_cmd('REVIEW_AKL_COMPONENT_SETUP', {})
+    else:
+        logger.info(
+            'SETUP_UPGRADE: User dismissed the upgrade invitation.'
+        )
+
 @AppMediator.register(FIRST_RUN_SETUP)
 def cmd_first_run_setup(args):
     logger.info('FIRST_RUN: Starting First-Run Setup Assistant.')
@@ -172,6 +293,10 @@ def cmd_first_run_setup(args):
         return
 
     if selected_option == 'DONT_ASK':
+        settings.setSetting(
+            'setup_wizard_notice_version',
+            '2'
+        )
         settings.setSetting(
             'first_run_completed',
             'true'
@@ -227,7 +352,7 @@ def cmd_first_run_setup(args):
             0,
             ''
         )
-        
+
         setup_data = wizard.runWizard(setup_data)
 
         if not setup_data:
@@ -255,212 +380,259 @@ def cmd_first_run_setup(args):
             'FIRST_RUN: Default setup paths saved.'
         )
 
-        components = collections.OrderedDict([
-            (
-                'script.akl.defaults',
-                'AKL Default Plugins'
-            ),
-            (
-                'script.akl.steam',
-                'Steam'
-            ),
-            (
-                'script.akl.retroarchlauncher',
-                'RetroArch Launcher'
-            )
-        ])
+        return _run_component_setup(upgrade_mode=False)
 
-        scrapers = collections.OrderedDict([
-            (
-                'script.akl.screenscraper',
-                'ScreenScraper'
-            ),
-            (
-                'script.akl.tgdbscraper',
-                'TheGamesDB'
-            ),
-            (
-                'script.akl.mobygames',
-                'MobyGames'
-            ),
-            (
-                'script.akl.arcadedb',
-                'ArcadeDB'
-            ),
-            (
-                'script.akl.gamefaqs',
-                'GameFAQs'
-            ),
-            (
-                'script.akl.googlesearch',
-                'Google Search'
-            ),
-            (
-                'script.akl.steamgriddb',
-                'SteamGridDB'
-            )
-        ])
-        
-        skins = collections.OrderedDict([
-            (
-                'skin.arctic.zephyr.akl',
-                'Arctic: Zephyr - Reloaded (AKL Edition)'
-            )
-        ])
 
-        def _build_component_options(addons, recommended=None):
-            options = collections.OrderedDict()
-            preselected = []
+@AppMediator.register('REVIEW_AKL_COMPONENT_SETUP')
+def cmd_review_akl_component_setup(args):
+    """Review optional AKL components without changing first-run status."""
+    logger.info(
+        'SETUP_UPGRADE: Starting component setup review.'
+    )
+    return _run_component_setup(upgrade_mode=True)
 
-            for addon_id, display_name in addons.items():
-                status = _get_component_status(addon_id)
 
-                if status['installed']:
-                    if status['enabled']:
-                        label = kodi.translate(44098).format(
-                            display_name
-                        )
-                    else:
-                        label = kodi.translate(44099).format(
-                            display_name
-                        )
+def _run_component_setup(upgrade_mode=False):
+    components = collections.OrderedDict([
+        (
+            'script.akl.defaults',
+            'AKL Default Plugins'
+        )
+    ])
 
-                    preselected.append(addon_id)
-                else:
-                    label = display_name
+    launchers = collections.OrderedDict([
+        (
+            'script.akl.steam',
+            'Steam Library Importer & Launcher'
+        ),
+        (
+            'script.akl.retroarchlauncher',
+            'RetroArch Launcher'
+        )
+    ])
 
-                options[addon_id] = label
-
-            if (
-                recommended
-                and recommended in options
-                and recommended not in preselected
-            ):
-                preselected.append(recommended)
-
-            return options, preselected
-
-        def _build_skin_options(addons):
-            options = collections.OrderedDict()
-
-            for addon_id, display_name in addons.items():
-                status = _get_component_status(addon_id)
-
-                if status['installed']:
-                    if status['enabled']:
-                        label = kodi.translate(44098).format(
-                            display_name
-                        )
-                    else:
-                        label = kodi.translate(44099).format(
-                            display_name
-                        )
-                else:
-                    label = display_name
-
-                options[addon_id] = label
-
-            return options
-
-        component_options, component_preselected = (
-            _build_component_options(
-                components,
-                'script.akl.defaults'
-            )
+    if xbmc.getCondVisibility('System.Platform.Windows'):
+        launchers['script.akl.managedlauncher'] = (
+            'Managed Windows Launcher'
         )
 
-        selected_components = kodi.MultiSelectDialog().select(
-            kodi.translate(44100),
-            component_options,
-            preselected=component_preselected
+    scrapers = collections.OrderedDict([
+        (
+            'script.akl.screenscraper',
+            'ScreenScraper'
+        ),
+        (
+            'script.akl.tgdbscraper',
+            'TheGamesDB'
+        ),
+        (
+            'script.akl.mobygames',
+            'MobyGames'
+        ),
+        (
+            'script.akl.arcadedb',
+            'ArcadeDB'
+        ),
+        (
+            'script.akl.gamefaqs',
+            'GameFAQs'
+        ),
+        (
+            'script.akl.googlesearch',
+            'Google Search'
+        ),
+        (
+            'script.akl.steamgriddb',
+            'SteamGridDB'
         )
+    ])
 
-        if selected_components is None:
-            logger.info(
-                'FIRST_RUN: Component selection cancelled.'
-            )
-            return
-
-        scraper_options, scraper_preselected = (
-            _build_component_options(
-                scrapers,
-                'script.akl.screenscraper'
-            )
+    skins = collections.OrderedDict([
+        (
+            'skin.arctic.zephyr.akl',
+            'Arctic: Zephyr - Reloaded (AKL Edition)'
         )
+    ])
 
-        selected_scrapers = kodi.MultiSelectDialog().select(
-            kodi.translate(44101),
-            scraper_options,
-            preselected=scraper_preselected
-        )
+    def _build_component_options(addons, recommended=None):
+        options = collections.OrderedDict()
+        preselected = []
 
-        if selected_scrapers is None:
-            logger.info(
-                'FIRST_RUN: Scraper selection cancelled.'
-            )
-            return
-
-        skin_options = _build_skin_options(skins)
-
-        selected_skins = kodi.MultiSelectDialog().select(
-            kodi.translate(44140),
-            skin_options,
-            preselected=[]
-        )
-
-        if selected_skins is None:
-            logger.info(
-                'FIRST_RUN: Skin selection cancelled.'
-            )
-            return
-
-        logger.info(
-            'FIRST_RUN: Selected components: {}'.format(
-                ', '.join(selected_components)
-                if selected_components
-                else '(none)'
-            )
-        )
-
-        logger.info(
-            'FIRST_RUN: Selected scrapers: {}'.format(
-                ', '.join(selected_scrapers)
-                if selected_scrapers
-                else '(none)'
-            )
-        )
-
-        logger.info(
-            'FIRST_RUN: Selected skins: {}'.format(
-                ', '.join(selected_skins)
-                if selected_skins
-                else '(none)'
-            )
-        )
-
-        selected_addons = (
-            selected_components
-            + selected_scrapers
-        )
-
-        for addon_id in selected_addons:
+        for addon_id, display_name in addons.items():
             status = _get_component_status(addon_id)
 
             if status['installed']:
-                continue
+                if status['enabled']:
+                    label = kodi.translate(44098).format(
+                        display_name
+                    )
+                else:
+                    label = kodi.translate(44099).format(
+                        display_name
+                    )
 
-            logger.info(
-                'FIRST_RUN: Installing component {}.'.format(
-                    addon_id
-                )
-            )
+                preselected.append(addon_id)
+            else:
+                label = display_name
 
-            xbmc.executebuiltin(
-                'InstallAddon({})'.format(addon_id),
-                True
-            )
+            options[addon_id] = label
 
+        if (
+            recommended
+            and recommended in options
+            and recommended not in preselected
+        ):
+            preselected.append(recommended)
+
+        return options, preselected
+
+    def _build_skin_options(addons):
+        options = collections.OrderedDict()
+
+        for addon_id, display_name in addons.items():
             status = _get_component_status(addon_id)
+
+            if status['installed']:
+                if status['enabled']:
+                    label = kodi.translate(44098).format(
+                        display_name
+                    )
+                else:
+                    label = kodi.translate(44099).format(
+                        display_name
+                    )
+            else:
+                label = display_name
+
+            options[addon_id] = label
+
+        return options
+
+    component_options, component_preselected = (
+        _build_component_options(
+            components,
+            'script.akl.defaults'
+        )
+    )
+
+    selected_components = kodi.MultiSelectDialog().select(
+        kodi.translate(44100),
+        component_options,
+        preselected=component_preselected
+    )
+
+    if selected_components is None:
+        logger.info(
+            'FIRST_RUN: Component selection cancelled.'
+        )
+        return
+
+    launcher_options, launcher_preselected = (
+        _build_component_options(launchers)
+    )
+
+    selected_launchers = kodi.MultiSelectDialog().select(
+        'Launchers & Integrations',
+        launcher_options,
+        preselected=launcher_preselected
+    )
+
+    if selected_launchers is None:
+        logger.info(
+            'FIRST_RUN: Launcher selection cancelled.'
+        )
+        return
+
+    scraper_options, scraper_preselected = (
+        _build_component_options(
+            scrapers,
+            'script.akl.screenscraper'
+        )
+    )
+
+    selected_scrapers = kodi.MultiSelectDialog().select(
+        kodi.translate(44101),
+        scraper_options,
+        preselected=scraper_preselected
+    )
+
+    if selected_scrapers is None:
+        logger.info(
+            'FIRST_RUN: Scraper selection cancelled.'
+        )
+        return
+
+    skin_options = _build_skin_options(skins)
+
+    selected_skins = kodi.MultiSelectDialog().select(
+        kodi.translate(44140),
+        skin_options,
+        preselected=[]
+    )
+
+    if selected_skins is None:
+        logger.info(
+            'FIRST_RUN: Skin selection cancelled.'
+        )
+        return
+
+    logger.info(
+        'FIRST_RUN: Selected components: {}'.format(
+            ', '.join(selected_components)
+            if selected_components
+            else '(none)'
+        )
+    )
+
+    logger.info(
+        'FIRST_RUN: Selected launchers: {}'.format(
+            ', '.join(selected_launchers)
+            if selected_launchers
+            else '(none)'
+        )
+    )
+
+    logger.info(
+        'FIRST_RUN: Selected scrapers: {}'.format(
+            ', '.join(selected_scrapers)
+            if selected_scrapers
+            else '(none)'
+        )
+    )
+
+    logger.info(
+        'FIRST_RUN: Selected skins: {}'.format(
+            ', '.join(selected_skins)
+            if selected_skins
+            else '(none)'
+        )
+    )
+
+    selected_addons = (
+        selected_components
+        + selected_launchers
+        + selected_scrapers
+    )
+
+    failed_addons = []
+
+    for addon_id in selected_addons:
+        try:
+            status = _get_component_status(addon_id)
+
+            if not status['installed']:
+                logger.info(
+                    'FIRST_RUN: Installing component {}.'.format(
+                        addon_id
+                    )
+                )
+
+                xbmc.executebuiltin(
+                    'InstallAddon({})'.format(addon_id),
+                    True
+                )
+
+                status = _get_component_status(addon_id)
 
             logger.info(
                 'FIRST_RUN: Installation result for {}: '
@@ -473,132 +645,232 @@ def cmd_first_run_setup(args):
                 )
             )
 
-        _configure_scraper_credentials(selected_scrapers)
+            if not status['installed']:
+                failed_addons.append(addon_id)
 
-        installed_selected_skins = []
-        failed_skins = []
+        except Exception:
+            logger.exception(
+                'FIRST_RUN: Installation failed for {}.'.format(
+                    addon_id
+                )
+            )
+            failed_addons.append(addon_id)
 
-        for addon_id in selected_skins:
+    if failed_addons:
+        logger.warning(
+            'FIRST_RUN: Optional components not installed: {}'.format(
+                ', '.join(failed_addons)
+            )
+        )
+
+        failed_names = [
+            components.get(
+                addon_id,
+                launchers.get(
+                    addon_id,
+                    scrapers.get(addon_id, addon_id)
+                )
+            )
+            for addon_id in failed_addons
+        ]
+
+        kodi.dialog_OK(
+            'AKL Revival Setup',
+            'The following optional plugins could not be installed:\n\n'
+            '{}\n\n'
+            'You can continue setup and install them later.'.format(
+                '\n'.join(failed_names)
+            )
+        )
+    _configure_scraper_credentials(
+        selected_scrapers,
+        selected_components + selected_launchers
+    )
+
+    if (
+        'script.akl.managedlauncher' in selected_launchers
+        and xbmc.getCondVisibility('System.Platform.Windows')
+    ):
+        managed_status = _get_component_status(
+            'script.akl.managedlauncher'
+        )
+
+        if managed_status['installed'] and managed_status['enabled']:
+            try:
+                managed_addon = xbmcaddon.Addon(
+                    'script.akl.managedlauncher'
+                )
+
+                default_shortcut = managed_addon.getSetting(
+                    'managed_default_exit_shortcut'
+                ).strip() or 'Ctrl+Shift+X'
+
+                message = (
+                    'Would you like to configure the default '
+                    'Exit / Return to Kodi shortcut for new '
+                    'Managed Windows Launchers?\n\n'
+                    'Current default: {}\n\n'
+                    'Individual launchers can override this '
+                    'shortcut later.'
+                ).format(default_shortcut)
+
+                if kodi.dialog_yesno(message):
+                    managed_addon.openSettings()
+                    logger.info(
+                        'FIRST_RUN: Managed Launcher settings opened.'
+                    )
+                else:
+                    logger.info(
+                        'FIRST_RUN: Managed Launcher shortcut '
+                        'configuration deferred.'
+                    )
+            except Exception:
+                logger.exception(
+                    'FIRST_RUN: Unable to configure Managed '
+                    'Launcher default shortcut.'
+                )
+        else:
+            logger.warning(
+                'FIRST_RUN: Managed Launcher shortcut setup skipped '
+                'because the add-on is not installed and enabled.'
+            )
+
+    installed_selected_skins = []
+    failed_skins = []
+
+    for addon_id in selected_skins:
+        status = _get_component_status(addon_id)
+
+        if not status['installed']:
+            logger.info(
+                'FIRST_RUN: Installing optional skin {}.'.format(
+                    addon_id
+                )
+            )
+
+            xbmc.executebuiltin(
+                'InstallAddon({})'.format(addon_id),
+                True
+            )
+
             status = _get_component_status(addon_id)
 
-            if not status['installed']:
-                logger.info(
-                    'FIRST_RUN: Installing optional skin {}.'.format(
-                        addon_id
-                    )
-                )
-
-                xbmc.executebuiltin(
-                    'InstallAddon({})'.format(addon_id),
-                    True
-                )
-
-                status = _get_component_status(addon_id)
-
-                logger.info(
-                    'FIRST_RUN: Skin installation result for {}: '
-                    'installed={}, enabled={}, name="{}", version="{}"'.format(
-                        addon_id,
-                        status['installed'],
-                        status['enabled'],
-                        status['name'],
-                        status['version']
-                    )
-                )
-
-            if status['installed']:
-                installed_selected_skins.append(addon_id)
-            else:
-                failed_skins.append(addon_id)
-
-        if failed_skins:
-            logger.error(
-                'FIRST_RUN: Failed to install selected skins: {}'.format(
-                    ', '.join(failed_skins)
-                )
-            )
-
-            kodi.dialog_OK(
-                kodi.translate(44145),
-                kodi.translate(44140)
-            )
-
-        # Verify Kodi exposes the current skin through lookandfeel.skin.
-        if installed_selected_skins:
-            current_skin_response = kodi.jsonrpc_query(
-                'Settings.GetSettingValue',
-                {
-                    'setting': 'lookandfeel.skin'
-                }
-            )
-
             logger.info(
-                'FIRST_RUN: Current Kodi skin setting: {}'.format(
-                    current_skin_response
+                'FIRST_RUN: Skin installation result for {}: '
+                'installed={}, enabled={}, name="{}", version="{}"'.format(
+                    addon_id,
+                    status['installed'],
+                    status['enabled'],
+                    status['name'],
+                    status['version']
                 )
             )
 
+        if status['installed']:
+            installed_selected_skins.append(addon_id)
+        else:
+            failed_skins.append(addon_id)
+
+    if failed_skins:
+        logger.error(
+            'FIRST_RUN: Failed to install selected skins: {}'.format(
+                ', '.join(failed_skins)
+            )
+        )
+
+        kodi.dialog_OK(
+            kodi.translate(44145),
+            kodi.translate(44140)
+        )
+
+    # Verify Kodi exposes the current skin through lookandfeel.skin.
+    if installed_selected_skins:
+        current_skin_response = kodi.jsonrpc_query(
+            'Settings.GetSettingValue',
+            {
+                'setting': 'lookandfeel.skin'
+            }
+        )
+
         logger.info(
-            'FIRST_RUN: Scanning installed AKL components.'
+            'FIRST_RUN: Current Kodi skin setting: {}'.format(
+                current_skin_response
+            )
         )
 
-        AppMediator.sync_cmd(
-            'SCAN_FOR_ADDONS',
-            {}
-        )
+    logger.info(
+        'FIRST_RUN: Scanning installed AKL components.'
+    )
 
-        logger.info(
-            'FIRST_RUN: AKL component scan completed.'
-        )
+    AppMediator.sync_cmd(
+        'SCAN_FOR_ADDONS',
+        {}
+    )
 
-        finish_options = collections.OrderedDict()
+    logger.info(
+        'FIRST_RUN: AKL component scan completed.'
+    )
+
+    finish_options = collections.OrderedDict()
+
+    if not upgrade_mode:
         finish_options['SETUP_SYSTEM'] = kodi.translate(44102)
-        finish_options['FINISH'] = kodi.translate(44103)
 
-        selected_finish = kodi.OrdDictionaryDialog().select(
-            kodi.translate(44104),
-            finish_options
-        )
+    finish_options['FINISH'] = kodi.translate(44103)
 
-        if selected_finish is None:
-            logger.info(
-                'FIRST_RUN: Finish selection cancelled. '
-                'First-run remains incomplete.'
-            )
-            return
+    selected_finish = kodi.OrdDictionaryDialog().select(
+        kodi.translate(44104),
+        finish_options
+    )
 
-        settings.setSetting(
-            'first_run_completed',
-            'true'
-        )
-
+    if selected_finish is None:
         logger.info(
-            'FIRST_RUN: First-run setup marked complete.'
+            'FIRST_RUN: Finish selection cancelled.'
         )
+        return
 
-        if selected_finish == 'SETUP_SYSTEM':
-            logger.info(
-                'FIRST_RUN: Starting Setup / New System Wizard.'
-            )
-
-            AppMediator.sync_cmd(
-                'SETUP_WIZARD',
-                {
-                    'setup_wizard_continue': True
-                }
-            )
-
-            return
-
+    if upgrade_mode:
         logger.info(
-            'FIRST_RUN: Setup complete. Returning to AKL.'
+            'SETUP_UPGRADE: Component review completed. '
+            'Returning to AKL Revival.'
+        )
+        return
+
+    settings.setSetting(
+        'setup_wizard_notice_version',
+        '2'
+    )
+    settings.setSetting(
+        'first_run_completed',
+        'true'
+    )
+
+    logger.info(
+        'FIRST_RUN: First-run setup marked complete.'
+    )
+
+    if selected_finish == 'SETUP_SYSTEM':
+        logger.info(
+            'FIRST_RUN: Starting Setup / New System Wizard.'
         )
 
         AppMediator.sync_cmd(
-            'SHOW_AKL_SETUP_COMPLETE',
-            {}
+            'SETUP_WIZARD',
+            {
+                'setup_wizard_continue': True
+            }
         )
 
+        return
+
+    logger.info(
+        'FIRST_RUN: Setup complete. Returning to AKL.'
+    )
+
+    AppMediator.sync_cmd(
+        'SHOW_AKL_SETUP_COMPLETE',
+        {}
+    )
 
 @AppMediator.register('SHOW_AKL_SETUP_COMPLETE')
 def cmd_show_akl_setup_complete(args):
