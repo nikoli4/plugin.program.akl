@@ -1,3 +1,15 @@
+## 1.7.8
+
+- Improved Managed Windows Launcher integration for Steam and RetroArch.
+- Fixed managed Steam launch handling and launch-statistics integration.
+- Improved managed launch tracking and recovery behavior.
+- Updated release metadata for Advanced Kodi Launcher: Revival.
+
+## 1.7.7
+
+- Updated the add-on display name to Advanced Kodi Launcher: Revival.
+- Improved consistency of Revival branding in Kodi's add-on information.
+
 ## 1.7.6
 
 - Added Managed Windows Launcher integration for supported emulators and Steam games.
