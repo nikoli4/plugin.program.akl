@@ -78,9 +78,12 @@ class WebService(threading.Thread):
         '''
         try:
             logger.info(f"Stopping AKL webservice({self.host}:{self.port})")
-            conn = HTTPConnection(f"{self.host}:{self.port}")
-            conn.request("QUIT", "/")
-            conn.getresponse()
+            conn = HTTPConnection(f"{self.host}:{self.port}", timeout=2.0)
+            try:
+                conn.request("QUIT", "/")
+                conn.getresponse()
+            finally:
+                conn.close()
         except Exception as error:
             logger.error('Exception in webservice.stop(): {}'.format(str(error)))
         

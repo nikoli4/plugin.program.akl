@@ -254,6 +254,10 @@ class AppService(object):
 
 
 
+        if cmd == 'MANAGED_ROM_WAS_LAUNCHED':
+            args = dict(args)
+            args['_service_monitor'] = self.monitor
+
         AppMediator.sync_cmd(cmd, args)
 
 

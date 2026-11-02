@@ -820,6 +820,17 @@ def cmd_execute_rom_with_launcher(args):
     steam_managed_enabled = (
         steam_managed_requested and _managed_windows_addon_available()
     )
+    retroarch_managed_requested = (
+        selected_addon_id == 'script.akl.retroarchlauncher'
+        and selected_launcher.get_setting('managed_windows_launch', False) is True
+    )
+    retroarch_managed_enabled = (
+        retroarch_managed_requested and _managed_windows_addon_available()
+    )
+    if retroarch_managed_requested and not retroarch_managed_enabled:
+        logger.warning(
+            'Managed RetroArch unavailable; using normal RetroArch launch'
+        )
     if steam_managed_requested and not steam_managed_enabled:
         logger.warning(
             'Managed Steam Launch requested but managed helper is unavailable'
@@ -831,7 +842,7 @@ def cmd_execute_rom_with_launcher(args):
     )
     # Generate a fresh ID only for opted-in managed launches.
     managed_launch_id = None
-    if managed_enabled or steam_managed_enabled:
+    if managed_enabled or steam_managed_enabled or retroarch_managed_enabled:
         managed_launch_id = _new_managed_launch_id()
         logger.info(
             'Managed Windows Launch prepared: launch_id=%s, rom_id=%s',
@@ -850,7 +861,7 @@ def cmd_execute_rom_with_launcher(args):
     # Preserve existing behavior for non-managed launchers. Managed Windows
     # launches can disable returning to the last viewed AKL collection.
     queue_collection_return = True
-    if managed_enabled or steam_managed_enabled:
+    if managed_enabled or steam_managed_enabled or retroarch_managed_enabled:
         try:
             managed_addon = xbmcaddon.Addon(
                 'script.akl.managedlauncher'
@@ -920,8 +931,19 @@ def cmd_execute_rom_with_launcher(args):
             'script.akl.steam',
             launch_command
         )
+    elif retroarch_managed_enabled:
+        launch_command = selected_launcher.get_launch_command(rom)
+        launch_command['--managed_launch_id'] = managed_launch_id
+        kodi.run_script(
+            'script.akl.retroarchlauncher',
+            launch_command
+        )
     else:
         selected_launcher.launch(rom)
 
     if not steam_managed_enabled:
-        _dispatch_launch_stats(managed_enabled, managed_stats_args, args)
+        _dispatch_launch_stats(
+            managed_enabled or retroarch_managed_enabled,
+            managed_stats_args,
+            args
+        )

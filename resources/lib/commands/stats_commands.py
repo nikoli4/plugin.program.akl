@@ -435,7 +435,78 @@ def _write_managed_launch_ack(launch_id, rom_id):
 
 
 
-def _wait_for_managed_emulator_started(launch_id, rom_id, timeout=15):
+def _read_managed_launch_type(launch_id, rom_id):
+    """Read a prepared managed configuration without executing the launcher."""
+    import json
+    import os
+    import re
+    import xbmcvfs
+
+    if not isinstance(launch_id, str) or not re.fullmatch(
+        r"[A-Za-z0-9_-]{1,128}", launch_id
+    ):
+        return None
+
+    if not isinstance(rom_id, str) or not rom_id:
+        return None
+
+    addon_data = xbmcvfs.translatePath(
+        "special://profile/addon_data/plugin.program.akl/"
+    )
+
+    path = os.path.join(
+        addon_data,
+        "managed_launch_config_{}.json".format(launch_id)
+    )
+
+    try:
+        with open(path, "r", encoding="utf-8-sig") as handle:
+            payload = json.load(handle)
+    except (OSError, ValueError, UnicodeError):
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+
+    if payload.get("launch_id") != launch_id:
+        return None
+
+    if payload.get("rom_id") != rom_id:
+        return None
+
+    launch_type = payload.get("launch_type")
+
+    if launch_type == "steam":
+        app_id = payload.get("steam_app_id")
+
+        if (
+            isinstance(app_id, str)
+            and re.fullmatch(r"[0-9]{1,20}", app_id)
+            and int(app_id) > 0
+            and payload.get("steam_launch_arguments") == []
+            and "application" not in payload
+            and "arguments" not in payload
+        ):
+            return "steam"
+
+        return None
+
+    if launch_type in (None, "emulator"):
+        if (
+            isinstance(payload.get("application"), str)
+            and payload["application"].strip()
+            and isinstance(payload.get("arguments"), list)
+            and all(
+                isinstance(argument, str)
+                for argument in payload["arguments"]
+            )
+        ):
+            return "emulator"
+
+    return None
+
+
+def _wait_for_managed_emulator_started(launch_id, rom_id, timeout=15, monitor=None):
 
 
 
@@ -710,7 +781,13 @@ def _wait_for_managed_emulator_started(launch_id, rom_id, timeout=15):
 
 
 
-        time.sleep(min(0.1, remaining))
+        interval = min(0.1, remaining)
+
+        if monitor is not None:
+            if monitor.waitForAbort(interval):
+                return False
+        else:
+            time.sleep(interval)
 
 
 
@@ -1392,12 +1469,59 @@ def cmd_process_managed_launch(args):
 
 
 
+    # The launcher prepares its configuration asynchronously. Resolve the
+    # launch type before waiting for an emulator startup confirmation.
+    # Steam starts only after Kodi exits and uses post-restart bookkeeping.
+    import time
+
+    service_monitor = args.get('_service_monitor')
+    launch_type = None
+    deadline = time.monotonic() + 2.0
+
+    while True:
+        launch_type = _read_managed_launch_type(launch_id, rom_id)
+
+        if launch_type is not None:
+            break
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+
+        interval = min(0.05, remaining)
+
+        if service_monitor is not None:
+            if service_monitor.waitForAbort(interval):
+                logger.info(
+                    'Managed launch classification interrupted by shutdown: %s',
+                    launch_id
+                )
+                return
+        else:
+            time.sleep(interval)
+
+    if launch_type == 'steam':
+        logger.info(
+            'Managed Steam shortcut deferred to post-restart bookkeeping: '
+            'launch_id=%s, rom_id=%s',
+            launch_id, rom_id
+        )
+        return
+
+    if launch_type is None:
+        logger.warning(
+            'Managed launch configuration unavailable or invalid: '
+            'launch_id=%s, rom_id=%s',
+            launch_id, rom_id
+        )
+        return
+
     if not _wait_for_managed_emulator_started(
 
 
 
 
-        launch_id, rom_id, timeout=15
+        launch_id, rom_id, timeout=15, monitor=args.get('_service_monitor')
 
 
 
