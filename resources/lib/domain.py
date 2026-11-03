@@ -34,6 +34,7 @@ import stat
 import zlib
 import shutil
 import xml.etree.ElementTree as ET
+import xbmc
 import xbmcvfs
 from enum import IntEnum
 
