@@ -396,54 +396,42 @@ def _run_component_setup(upgrade_mode=False):
     components = collections.OrderedDict([
         (
             'script.akl.defaults',
-            'AKL Default Plugins'
+            'AKL Revival: Default Plugins'
         )
     ])
 
     launchers = collections.OrderedDict([
         (
             'script.akl.steam',
-            'Steam Library Importer & Launcher'
+            'AKL Revival: Steam Plugin'
         ),
         (
             'script.akl.retroarchlauncher',
-            'RetroArch Launcher'
+            'AKL Revival: RetroArch Launcher'
         )
     ])
 
     if xbmc.getCondVisibility('System.Platform.Windows'):
         launchers['script.akl.managedlauncher'] = (
-            'Managed Windows Launcher'
+            'AKL Revival: Managed Windows Launcher'
         )
 
     scrapers = collections.OrderedDict([
         (
             'script.akl.screenscraper',
-            'ScreenScraper'
+            'AKL Revival: ScreenScraper'
         ),
         (
             'script.akl.tgdbscraper',
-            'TheGamesDB'
-        ),
-        (
-            'script.akl.mobygames',
-            'MobyGames'
+            'AKL Revival: TheGamesDB Scraper'
         ),
         (
             'script.akl.arcadedb',
-            'ArcadeDB'
-        ),
-        (
-            'script.akl.gamefaqs',
-            'GameFAQs'
-        ),
-        (
-            'script.akl.googlesearch',
-            'Google Search'
+            'AKL Revival: ArcadeDB Scraper'
         ),
         (
             'script.akl.steamgriddb',
-            'SteamGridDB'
+            'AKL Revival: SteamGridDB Scraper'
         )
     ])
 
@@ -706,9 +694,12 @@ def _run_component_setup(upgrade_mode=False):
                 ).strip() or 'Ctrl+Shift+X'
 
                 message = (
+                    'Managed Windows Launcher helps launch Windows games '
+                    'and emulators while temporarily closing Kodi. '
+                    'It provides a configurable shortcut to exit the '
+                    'game and return to Kodi.\n\n'
                     'Would you like to configure the default '
-                    'Exit / Return to Kodi shortcut for new '
-                    'Managed Windows Launchers?\n\n'
+                    'Exit / Return to Kodi shortcut now?\n\n'
                     'Current default: {}\n\n'
                     'Individual launchers can override this '
                     'shortcut later.'

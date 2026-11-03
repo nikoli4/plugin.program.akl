@@ -26,6 +26,15 @@ import re
 import time
 import datetime
 import json
+import os
+import hashlib
+import tempfile
+import zipfile
+import stat
+import zlib
+import shutil
+import xml.etree.ElementTree as ET
+import xbmcvfs
 from enum import IntEnum
 
 # --- AKL packages ---
@@ -444,6 +453,855 @@ class ROMLauncherAddon(ROMAddon):
 
 class RetroplayerLauncherAddon(ROMLauncherAddon):
 
+    @staticmethod
+    def _supported_rom_extensions():
+        extensions = set()
+        addons_dir = xbmcvfs.translatePath('special://home/addons')
+
+        if not os.path.isdir(addons_dir):
+            return extensions
+
+        for addon_id in os.listdir(addons_dir):
+            if not addon_id.startswith('game.'):
+                continue
+
+            manifest = os.path.join(addons_dir, addon_id, 'addon.xml')
+
+            if not os.path.isfile(manifest):
+                continue
+
+            try:
+                root = ET.parse(manifest).getroot()
+
+                for extension in root.findall('extension'):
+                    if extension.get('point') != 'kodi.gameclient':
+                        continue
+
+                    raw = extension.findtext('extensions') or ''
+
+                    for item in raw.split('|'):
+                        item = item.strip().lower().lstrip('.')
+                        if item:
+                            extensions.add('.' + item)
+
+            except (OSError, ET.ParseError) as exc:
+                logger.warning(
+                    'RetroPlayer: cannot read game-client manifest %s: %s',
+                    manifest, exc
+                )
+
+        return extensions
+
+    @staticmethod
+    def _retroplayer_is_reparse_point(path):
+        info = os.lstat(path)
+        attributes = getattr(info, 'st_file_attributes', 0)
+        flag = getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0)
+
+        return (
+            stat.S_ISLNK(info.st_mode)
+            or bool(attributes & flag)
+        )
+
+    @staticmethod
+    def _active_retroplayer_cache_directories(cache_root):
+        protected = set()
+
+        def rpc(method, params=None):
+            request = {
+                'jsonrpc': '2.0',
+                'method': method,
+                'id': 1
+            }
+            if params is not None:
+                request['params'] = params
+
+            response = json.loads(
+                xbmc.executeJSONRPC(json.dumps(request))
+            )
+
+            if 'error' in response or 'result' not in response:
+                raise ValueError(
+                    'Kodi JSON-RPC returned an error for {}'.format(method)
+                )
+
+            return response['result']
+
+        try:
+            players = rpc('Player.GetActivePlayers')
+
+            if not isinstance(players, list):
+                raise ValueError('Invalid active player response')
+
+            cache_root_real = os.path.normcase(
+                os.path.realpath(cache_root)
+            )
+
+            for player in players:
+                player_id = player['playerid']
+
+                result = rpc(
+                    'Player.GetItem',
+                    {
+                        'playerid': player_id,
+                        'properties': ['file']
+                    }
+                )
+
+                filepath = result.get('item', {}).get('file')
+
+                if not filepath:
+                    raise ValueError(
+                        'Active player did not provide a file path'
+                    )
+
+                directory = os.path.normcase(
+                    os.path.realpath(os.path.dirname(filepath))
+                )
+
+                if os.path.dirname(directory) == cache_root_real:
+                    protected.add(directory)
+
+            return protected
+
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            logger.warning(
+                'RetroPlayer cache: playback detection failed; '
+                'cleanup will be skipped: %s',
+                exc
+            )
+            return None
+
+    @classmethod
+    def _validate_retroplayer_cache_candidate(cls, cache_root, directory, expected_identity=None):
+        try:
+            root = os.path.normcase(os.path.abspath(cache_root))
+            candidate = os.path.normcase(os.path.abspath(directory))
+
+            if cls._retroplayer_is_reparse_point(root):
+                return False
+
+            if not stat.S_ISDIR(os.lstat(root).st_mode):
+                return False
+
+            if os.path.dirname(candidate) != root:
+                return False
+
+            name = os.path.basename(candidate)
+
+            if len(name) != 64 or any(
+                char not in '0123456789abcdef' for char in name
+            ):
+                return False
+
+            if cls._retroplayer_is_reparse_point(candidate):
+                return False
+
+            candidate_info = os.lstat(candidate)
+
+            if not stat.S_ISDIR(candidate_info.st_mode):
+                return False
+
+            if expected_identity is not None:
+                current_identity = (
+                    candidate_info.st_dev,
+                    candidate_info.st_ino
+                )
+
+                if current_identity != expected_identity:
+                    return False
+
+            with os.scandir(candidate) as items:
+                for item in items:
+                    filepath = item.path
+
+                    if cls._retroplayer_is_reparse_point(filepath):
+                        return False
+
+                    info = os.lstat(filepath)
+
+                    if not stat.S_ISREG(info.st_mode):
+                        return False
+
+            return True
+
+        except (OSError, ValueError):
+            return False
+
+    @classmethod
+    def _delete_retroplayer_cache_candidate(
+        cls, cache_root, directory, expected_root_identity,
+        expected_directory_identity
+    ):
+        """Delete an isolated cache entry through a private staging directory."""
+        root = os.path.abspath(cache_root)
+        candidate = os.path.abspath(directory)
+
+        if not cls._validate_retroplayer_cache_candidate(
+            root, candidate, expected_identity=expected_directory_identity
+        ):
+            raise ValueError('Unsafe RetroPlayer cache deletion candidate')
+
+        root_info = os.lstat(root)
+
+        if (
+            (root_info.st_dev, root_info.st_ino)
+            != expected_root_identity
+        ):
+            raise ValueError('RetroPlayer cache root identity changed')
+
+        # Playback may have changed since the LRU planner ran.
+        # Fail closed if Kodi cannot provide a reliable active-player list.
+        active_directories = cls._active_retroplayer_cache_directories(root)
+
+        if active_directories is None:
+            raise ValueError(
+                'RetroPlayer playback detection failed before deletion'
+            )
+
+        candidate_key = os.path.normcase(os.path.abspath(candidate))
+
+        if candidate_key in active_directories:
+            raise ValueError(
+                'RetroPlayer cache directory became active before deletion'
+            )
+
+        staging_root = os.path.join(root, '.cleanup-staging')
+
+        if os.path.lexists(staging_root):
+            if (
+                cls._retroplayer_is_reparse_point(staging_root)
+                or not stat.S_ISDIR(os.lstat(staging_root).st_mode)
+            ):
+                raise ValueError('Unsafe RetroPlayer staging directory')
+        else:
+            os.mkdir(staging_root)
+
+        staging_info = os.lstat(staging_root)
+
+        if (
+            cls._retroplayer_is_reparse_point(staging_root)
+            or not stat.S_ISDIR(staging_info.st_mode)
+            or staging_info.st_dev != root_info.st_dev
+        ):
+            raise ValueError('Unsafe RetroPlayer staging filesystem')
+
+        staged = os.path.join(staging_root, os.path.basename(candidate))
+
+        if os.path.lexists(staged):
+            raise ValueError('RetroPlayer staging destination already exists')
+
+        if not cls._validate_retroplayer_cache_candidate(
+            root, candidate, expected_identity=expected_directory_identity
+        ):
+            raise ValueError('RetroPlayer cache candidate changed')
+
+        current_root = os.lstat(root)
+        current_staging = os.lstat(staging_root)
+
+        if (
+            (current_root.st_dev, current_root.st_ino)
+            != expected_root_identity
+            or (current_staging.st_dev, current_staging.st_ino)
+            != (staging_info.st_dev, staging_info.st_ino)
+        ):
+            raise ValueError('RetroPlayer staging identity changed')
+
+        os.rename(candidate, staged)
+
+        moved_info = os.lstat(staged)
+
+        if (
+            (moved_info.st_dev, moved_info.st_ino)
+            != expected_directory_identity
+            or cls._retroplayer_is_reparse_point(staged)
+        ):
+            raise ValueError('RetroPlayer staged directory identity mismatch')
+
+        with os.scandir(staged) as items:
+            files = []
+
+            for item in items:
+                if cls._retroplayer_is_reparse_point(item.path):
+                    raise ValueError('Unsafe staged RetroPlayer cache file')
+
+                info = os.lstat(item.path)
+
+                if not stat.S_ISREG(info.st_mode):
+                    raise ValueError('Unexpected staged RetroPlayer entry')
+
+                files.append((item.path, info.st_dev, info.st_ino))
+
+        for filepath, device, inode in files:
+            current_staging = os.lstat(staging_root)
+            current_moved = os.lstat(staged)
+            file_info = os.lstat(filepath)
+
+            if (
+                (current_staging.st_dev, current_staging.st_ino)
+                != (staging_info.st_dev, staging_info.st_ino)
+                or (current_moved.st_dev, current_moved.st_ino)
+                != expected_directory_identity
+                or (file_info.st_dev, file_info.st_ino)
+                != (device, inode)
+                or not stat.S_ISREG(file_info.st_mode)
+                or cls._retroplayer_is_reparse_point(filepath)
+            ):
+                raise ValueError('Staged RetroPlayer cache changed')
+
+            os.unlink(filepath)
+
+        if (
+            (os.lstat(staged).st_dev, os.lstat(staged).st_ino)
+            != expected_directory_identity
+        ):
+            raise ValueError('Staged RetroPlayer directory changed')
+
+        os.rmdir(staged)
+
+
+    @classmethod
+    def _preview_retroplayer_cache_cleanup(cls, cache_root, protected_dir, incoming_bytes=0, incoming_filename=None, perform_delete=False):
+        limit_bytes = 2 * 1024 * 1024 * 1024
+
+        if not os.path.isdir(cache_root):
+            return
+
+        try:
+            if cls._retroplayer_is_reparse_point(cache_root):
+                logger.warning(
+                    'RetroPlayer cache: reparse-point cache root; '
+                    'cleanup skipped: %s',
+                    cache_root
+                )
+                return
+        except OSError as exc:
+            logger.warning(
+                'RetroPlayer cache: cannot validate cache root: %s',
+                exc
+            )
+            return
+
+        if incoming_bytes < 0:
+            raise ValueError('Negative incoming ROM size')
+
+        entries = []
+        total_bytes = 0
+        accounting_incomplete = False
+
+        try:
+            root_info = os.lstat(cache_root)
+            root_identity = (root_info.st_dev, root_info.st_ino)
+        except OSError as exc:
+            logger.warning(
+                'RetroPlayer cache: cannot identify cache root: %s',
+                exc
+            )
+            return
+
+        protected_path = os.path.normcase(os.path.abspath(protected_dir))
+
+        active_directories = cls._active_retroplayer_cache_directories(
+            cache_root
+        )
+
+        if active_directories is None:
+            return
+
+        active_directories.add(protected_path)
+
+        try:
+            names = os.listdir(cache_root)
+        except OSError as exc:
+            logger.warning(
+                'RetroPlayer cache: unable to inspect cache root: %s',
+                exc
+            )
+            return
+
+        for name in names:
+            if name == '.cleanup-staging':
+                staging_directory = os.path.join(cache_root, name)
+                try:
+                    if (
+                        cls._retroplayer_is_reparse_point(staging_directory)
+                        or not stat.S_ISDIR(
+                            os.lstat(staging_directory).st_mode
+                        )
+                    ):
+                        accounting_incomplete = True
+                        logger.warning(
+                            'RetroPlayer cache: unsafe staging directory; '
+                            'cleanup will be skipped'
+                        )
+                    elif os.listdir(staging_directory):
+                        accounting_incomplete = True
+                        logger.warning(
+                            'RetroPlayer cache: staging directory is not empty: %s; '
+                            'cleanup suspended until the contents are inspected',
+                            staging_directory
+                        )
+                except (OSError, ValueError) as exc:
+                    accounting_incomplete = True
+                    logger.warning(
+                        'RetroPlayer cache: staging inspection failed; '
+                        'cleanup will be skipped: %s', exc
+                    )
+                continue
+            # Cache keys are 64-character SHA256 hexadecimal strings.
+            if len(name) != 64 or any(
+                char not in '0123456789abcdef' for char in name
+            ):
+                logger.info(
+                    'RetroPlayer cache: skipping unexpected entry %s',
+                    name
+                )
+                accounting_incomplete = True
+                continue
+
+            directory = os.path.join(cache_root, name)
+
+            try:
+                if (
+                    cls._retroplayer_is_reparse_point(directory)
+                    or not os.path.isdir(directory)
+                ):
+                    logger.warning(
+                        'RetroPlayer cache: skipping unsafe directory %s',
+                        directory
+                    )
+                    accounting_incomplete = True
+                    continue
+            except OSError as exc:
+                logger.warning(
+                    'RetroPlayer cache: cannot inspect directory %s: %s',
+                    directory, exc
+                )
+                accounting_incomplete = True
+                continue
+
+            try:
+                directory_info = os.lstat(directory)
+                directory_identity = (
+                    directory_info.st_dev,
+                    directory_info.st_ino
+                )
+            except OSError as exc:
+                logger.warning(
+                    'RetroPlayer cache: cannot identify %s: %s',
+                    directory, exc
+                )
+                accounting_incomplete = True
+                continue
+
+            size = 0
+            last_used = 0
+            valid = True
+
+            try:
+                def walk_error(exc):
+                    raise exc
+
+                for root, dirs, files in os.walk(
+                    directory,
+                    topdown=True,
+                    onerror=walk_error,
+                    followlinks=False
+                ):
+                    if dirs:
+                        # Current cache entries should contain files only.
+                        valid = False
+                        break
+
+                    for filename in files:
+                        filepath = os.path.join(root, filename)
+
+                        if cls._retroplayer_is_reparse_point(filepath):
+                            valid = False
+                            break
+
+                        file_info = os.lstat(filepath)
+                        if not stat.S_ISREG(file_info.st_mode):
+                            valid = False
+                            break
+                        size += file_info.st_size
+                        last_used = max(last_used, file_info.st_mtime)
+
+                    if not valid:
+                        break
+
+            except OSError as exc:
+                logger.warning(
+                    'RetroPlayer cache: unable to inspect %s: %s',
+                    directory, exc
+                )
+                valid = False
+
+            if not valid:
+                logger.warning(
+                    'RetroPlayer cache: skipping unsafe entry %s',
+                    directory
+                )
+                accounting_incomplete = True
+                continue
+
+            total_bytes += size
+            entries.append((
+                last_used, directory, size, directory_identity
+            ))
+
+        if accounting_incomplete:
+            logger.warning(
+                'RetroPlayer cache: accounting incomplete; '
+                '2 GB limit cannot be verified; cleanup skipped'
+            )
+            return
+
+        additional_bytes = incoming_bytes
+
+        if incoming_filename is not None:
+            if (
+                incoming_filename != os.path.basename(incoming_filename)
+                or incoming_filename in ("", ".", "..")
+            ):
+                raise ValueError('Invalid incoming ROM filename')
+
+            existing_target = os.path.join(
+                protected_dir, incoming_filename
+            )
+
+            try:
+                if (
+                    not cls._retroplayer_is_reparse_point(protected_dir)
+                    and not cls._retroplayer_is_reparse_point(existing_target)
+                    and os.path.isfile(existing_target)
+                ):
+                    existing_info = os.lstat(existing_target)
+
+                    if stat.S_ISREG(existing_info.st_mode):
+                        additional_bytes = max(
+                            0, incoming_bytes - existing_info.st_size
+                        )
+            except (OSError, ValueError):
+                additional_bytes = incoming_bytes
+
+        projected_bytes = total_bytes + additional_bytes
+
+        if projected_bytes <= limit_bytes:
+            logger.info(
+                'RetroPlayer cache: %d bytes used; '
+                'below %d-byte limit; no cleanup needed',
+                projected_bytes, limit_bytes
+            )
+            return
+
+        entries.sort(key=lambda item: item[0])
+        remaining = projected_bytes
+
+        for last_used, directory, size, directory_identity in entries:
+            if remaining <= limit_bytes:
+                break
+
+            if os.path.normcase(os.path.abspath(directory)) in active_directories:
+                logger.info(
+                    'RetroPlayer cache: protecting active ROM directory %s',
+                    directory
+                )
+                continue
+
+            try:
+                current_root = os.lstat(cache_root)
+                current_root_identity = (
+                    current_root.st_dev,
+                    current_root.st_ino
+                )
+            except OSError as exc:
+                logger.warning(
+                    'RetroPlayer cache: root changed during scan: %s',
+                    exc
+                )
+                return
+
+            if current_root_identity != root_identity:
+                logger.warning(
+                    'RetroPlayer cache: root identity changed; '
+                    'cleanup skipped'
+                )
+                return
+
+            if not cls._validate_retroplayer_cache_candidate(
+                cache_root,
+                directory,
+                expected_identity=directory_identity
+            ):
+                logger.warning(
+                    'RetroPlayer cache: candidate changed or unsafe; '
+                    'skipping %s',
+                    directory
+                )
+                continue
+
+            try:
+                final_root_info = os.lstat(cache_root)
+                final_root_identity = (
+                    final_root_info.st_dev,
+                    final_root_info.st_ino
+                )
+            except OSError as exc:
+                logger.warning(
+                    'RetroPlayer cache: final root identity check failed: %s',
+                    exc
+                )
+                return
+
+            if final_root_identity != root_identity:
+                logger.warning(
+                    'RetroPlayer cache: root identity changed after '
+                    'candidate validation; cleanup skipped'
+                )
+                return
+
+            if perform_delete:
+                try:
+                    cls._delete_retroplayer_cache_candidate(
+                        cache_root,
+                        directory,
+                        root_identity,
+                        directory_identity
+                    )
+                except (OSError, ValueError) as exc:
+                    logger.warning(
+                        'RetroPlayer cache: deletion failed for %s; '
+                        'cleanup suspended: %s',
+                        directory, exc
+                    )
+                    return
+
+                logger.info(
+                    'RetroPlayer cache: removed %s (%d bytes)',
+                    directory, size
+                )
+            else:
+                logger.info(
+                    'RetroPlayer cache PREVIEW: would remove %s (%d bytes)',
+                    directory, size
+                )
+
+            remaining -= size
+
+        if remaining > limit_bytes:
+            logger.warning(
+                'RetroPlayer cache: projected usage remains above '
+                'limit after protecting active/current ROMs; '
+                '%d bytes would remain against %d-byte limit',
+                remaining, limit_bytes
+            )
+
+        logger.info(
+            'RetroPlayer cache PREVIEW: %d bytes currently used; '
+            '%d additional bytes; %d projected bytes would remain',
+            total_bytes, additional_bytes, remaining
+        )
+
+
+    @classmethod
+    def _prepare_retroplayer_path(cls, original_path):
+        if not original_path.lower().endswith('.zip'):
+            return original_path
+
+        archive_path = os.path.abspath(original_path)
+
+        if not os.path.isfile(archive_path):
+            raise FileNotFoundError(
+                'ZIP archive not found: {}'.format(archive_path)
+            )
+
+        supported = cls._supported_rom_extensions()
+
+        if not supported:
+            raise ValueError(
+                'No installed Kodi game client advertises ROM extensions'
+            )
+
+        stat = os.stat(archive_path)
+
+        cache_root = xbmcvfs.translatePath(
+            'special://profile/addon_data/plugin.program.akl/RetroPlayerCache'
+        )
+
+        cache_key = hashlib.sha256(
+            '{}|{}|{}'.format(
+                os.path.normcase(archive_path),
+                stat.st_size,
+                stat.st_mtime_ns
+            ).encode('utf-8')
+        ).hexdigest()
+
+        cache_dir = os.path.join(cache_root, cache_key)
+
+        with zipfile.ZipFile(archive_path, 'r') as archive:
+            candidates = []
+
+            for entry in archive.infolist():
+                if entry.is_dir():
+                    continue
+
+                name = entry.filename.replace('\\', '/')
+                filename = name.rsplit('/', 1)[-1]
+
+                if not filename:
+                    continue
+
+                extension = os.path.splitext(filename)[1].lower()
+
+                if extension in supported:
+                    candidates.append((entry, filename))
+
+            if len(candidates) != 1:
+                raise ValueError(
+                    'ZIP contains {} recognized ROM files; expected exactly one'
+                    .format(len(candidates))
+                )
+
+            entry, filename = candidates[0]
+
+            if entry.file_size <= 0:
+                raise ValueError('ROM inside ZIP is empty')
+
+            if entry.file_size > 512 * 1024 * 1024:
+                raise ValueError(
+                    'ROM exceeds the 512 MB extraction safety limit'
+                )
+
+            if entry.flag_bits & 0x1:
+                raise ValueError(
+                    'Encrypted ZIP archives are not supported'
+                )
+
+            cls._preview_retroplayer_cache_cleanup(
+                cache_root,
+                cache_dir,
+                entry.file_size,
+                filename,
+                perform_delete=True
+            )
+
+            if os.path.lexists(cache_root):
+                if cls._retroplayer_is_reparse_point(cache_root):
+                    raise ValueError(
+                        'Unsafe RetroPlayer cache root: {}'.format(cache_root)
+                    )
+
+            os.makedirs(cache_dir, exist_ok=True)
+
+            if not cls._validate_retroplayer_cache_candidate(
+                cache_root, cache_dir
+            ):
+                raise ValueError(
+                    'Unsafe RetroPlayer extraction directory: {}'
+                    .format(cache_dir)
+                )
+
+            root_info = os.lstat(cache_root)
+            directory_info = os.lstat(cache_dir)
+            root_identity = (root_info.st_dev, root_info.st_ino)
+            directory_identity = (
+                directory_info.st_dev, directory_info.st_ino
+            )
+
+            def validate_extraction_destination():
+                current_root = os.lstat(cache_root)
+                current_directory = os.lstat(cache_dir)
+
+                if (
+                    (current_root.st_dev, current_root.st_ino)
+                    != root_identity
+                    or (current_directory.st_dev, current_directory.st_ino)
+                    != directory_identity
+                ):
+                    raise ValueError(
+                        'RetroPlayer extraction destination changed'
+                    )
+
+                if not cls._validate_retroplayer_cache_candidate(
+                    cache_root,
+                    cache_dir,
+                    expected_identity=directory_identity
+                ):
+                    raise ValueError(
+                        'Unsafe RetroPlayer extraction destination'
+                    )
+
+            target = os.path.join(cache_dir, filename)
+
+            validate_extraction_destination()
+
+            if os.path.lexists(target):
+                if cls._retroplayer_is_reparse_point(target):
+                    raise ValueError(
+                        'Unsafe RetroPlayer cached ROM target'
+                    )
+
+            if (
+                os.path.isfile(target)
+                and os.path.getsize(target) == entry.file_size
+            ):
+                validate_extraction_destination()
+                checksum = 0
+
+                with open(target, 'rb') as cached_file:
+                    for chunk in iter(
+                        lambda: cached_file.read(1024 * 1024), b''
+                    ):
+                        checksum = zlib.crc32(chunk, checksum)
+
+                checksum &= 0xffffffff
+
+                if checksum == entry.CRC:
+                    validate_extraction_destination()
+                    os.utime(target, None)
+                    logger.info(
+                        'RetroPlayer: CRC32 verified; using cached ROM %s',
+                        target
+                    )
+                    return target
+
+                logger.warning(
+                    'RetroPlayer: cached ROM CRC32 mismatch; '
+                    'extracting again: %s',
+                    target
+                )
+
+            fd, temporary = tempfile.mkstemp(
+                prefix='rom-',
+                suffix='.tmp',
+                dir=cache_dir
+            )
+
+            try:
+                with os.fdopen(fd, 'wb') as output:
+                    with archive.open(entry) as input_file:
+                        shutil.copyfileobj(input_file, output)
+
+                if os.path.getsize(temporary) != entry.file_size:
+                    raise ValueError('Extracted ROM size mismatch')
+
+                validate_extraction_destination()
+                os.replace(temporary, target)
+                validate_extraction_destination()
+                os.utime(target, None)
+
+            finally:
+                if os.path.exists(temporary):
+                    os.unlink(temporary)
+
+            logger.info(
+                'RetroPlayer: extracted %s -> %s',
+                archive_path, target
+            )
+
+            return target
+
     def get_launch_command(self, rom: ROM) -> dict:
         return None
 
@@ -470,8 +1328,23 @@ class RetroplayerLauncherAddon(ROMLauncherAddon):
         logger.info(f'launch() path     "{rom_file_path.getPath()}"')
 
         logger.debug('Executing Retroplayer')
-        kodi.play_item(rom.get_name(), rom_file_path.getPath(), 'game', game_info)
-        logger.debug('Retroyplayer call finished')
+
+        try:
+            playback_path = self._prepare_retroplayer_path(
+                rom_file_path.getPath()
+            )
+        except (OSError, ValueError, zipfile.BadZipFile) as exc:
+            logger.exception(
+                'RetroPlayer: unable to prepare ROM: %s', exc
+            )
+            kodi.notify_warn(
+                'RetroPlayer could not prepare this ROM: {}'.format(exc)
+            )
+            return
+
+        logger.info('RetroPlayer playback path: %s', playback_path)
+        kodi.play_item(rom.get_name(), playback_path, 'game', game_info)
+        logger.debug('RetroPlayer call finished')
 
     def configure(self, args: dict):
         post_data = {

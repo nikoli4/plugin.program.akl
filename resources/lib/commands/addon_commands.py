@@ -80,6 +80,19 @@ def cmd_show_addons(args):
 @AppMediator.register('ADDON_DETAILS')
 def cmd_addon_details(args):
     addon_id: str = args['addon_id'] if 'addon_id' in args else None
+    # RetroPlayer is an internal AKL launcher, not a Kodi add-on.
+    if addon_id == constants.RETROPLAYER_LAUNCHER_APP_NAME:
+        kodi.dialog_OK(
+            'RetroPlayer runs compatible retro games directly inside Kodi, '
+            'without launching an external emulator.\n\n'
+            'Install a compatible Kodi game emulator add-on, then select '
+            'RetroPlayer as an AKL launcher.\n\n'
+            'Kodi will use an available compatible game emulator to play '
+            'the selected ROM.',
+            title='AKL Revival - Kodi RetroPlayer'
+        )
+        AppMediator.sync_cmd('SHOW_ADDONS')
+        return
     
     options = collections.OrderedDict()
     options["UPDATE"] = kodi.translate(42009)
