@@ -1,3 +1,15 @@
+## 1.7.10
+
+- Fixed a missing Kodi API import that prevented RetroPlayer launches when cache management was initialized.
+
+## 1.7.9
+
+- Improved Kodi RetroPlayer support for compatible ROM archives.
+- Added preparation and extraction of supported archived ROMs before launching RetroPlayer.
+- Added RetroPlayer cache inspection and cleanup safeguards.
+- Protected active playback cache directories and rejected unsafe cache paths.
+- Improved optional component descriptions in the AKL setup interface.
+
 ## 1.7.8
 
 - Improved Managed Windows Launcher integration for Steam and RetroArch.
