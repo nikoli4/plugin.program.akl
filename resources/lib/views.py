@@ -377,15 +377,25 @@ def vw_edit_rom(rom_id: str):
 # -------------------------------------------------------------------------------------------------
 @router.route('/execute/rom/<rom_id>')
 def vw_route_execute_rom(rom_id):
-    AppMediator.async_cmd("EXECUTE_ROM", {'rom_id': rom_id})
+    args = {'rom_id': rom_id}
+    collection_id = router.args.get('collection_id', [None])[0]
+    if collection_id:
+        args['romcollection_id'] = collection_id
+
+    if router.args.get('select_launcher', [None])[0] == '1':
+        args['force_launcher_selection'] = True
+
+    AppMediator.async_cmd("EXECUTE_ROM", args)
 
 
 @router.route('/rom/view/<rom_id>')
 def vw_view_rom(rom_id):
     xbmc.executebuiltin('Dialog.Close(busydialog)')
+    collection_id = router.args.get('collection_id', [None])[0]
     container = viewqueries.qry_get_view_item(rom_id)
     ui = ViewRomGUI('script-akl-romdetails.xml', globals.addon_path, 'default', '1080i', True,
-                    container_id=19801, container_data=container)
+                    container_id=19801, container_data=container,
+                    romcollection_id=collection_id)
     ui.doModal()
     del ui
 
@@ -503,8 +513,10 @@ class ViewRomGUI(xbmcgui.WindowXML):
         
         self.container_id = kwargs['container_id']
         self.container_data = kwargs['container_data']
+        self.romcollection_id = kwargs.get('romcollection_id')
 
     def onInit(self):
+        self.setProperty('AKLCollectionId', str(self.romcollection_id or ''))
         if self.first_load:
             self._render_items()
 

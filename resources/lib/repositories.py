@@ -966,7 +966,9 @@ class ROMCollectionRepository(object):
                 rom_asset_mappings.append(RomAssetMapping(mapping_data))
                 
             launchers = []
-            for launcher_data in launchers_data:
+            for launcher_data in filter(
+                    lambda ld: ld['romcollection_id'] == romcollection_data['id'],
+                    launchers_data):
                 addon = AklAddon(launcher_data.copy())
                 launcher = ROMLauncherAddonFactory.create(addon, launcher_data)
                 launchers.append(launcher)
@@ -1003,7 +1005,9 @@ class ROMCollectionRepository(object):
                 rom_asset_mappings.append(RomAssetMapping(mapping_data))
                 
             launchers = []
-            for launcher_data in launchers_data:
+            for launcher_data in filter(
+                    lambda ld: ld['romcollection_id'] == romcollection_data['id'],
+                    launchers_data):
                 addon = AklAddon(launcher_data.copy())
                 launcher = ROMLauncherAddonFactory.create(addon, launcher_data)
                 launchers.append(launcher)
@@ -1157,7 +1161,31 @@ class ROMCollectionRepository(object):
         self._uow.execute(qry.DELETE_ROMCOLLECTION, romcollection_id)
 
     def remove_launcher(self, romcollection_id: str, launcher_id: str):
-        self._uow.execute(qry.DELETE_ROMCOLLECTION_LAUNCHER, romcollection_id, launcher_id)
+        # Capture whether the removed association was explicitly default.
+        rows = self._uow.execute(
+            "SELECT launcher_id, is_default FROM romcollection_launchers "
+            "WHERE romcollection_id = ?",
+            romcollection_id
+        ).fetchall()
+
+        removed_was_default = any(
+            row['launcher_id'] == launcher_id and row['is_default']
+            for row in rows
+        )
+
+        self._uow.execute(
+            qry.DELETE_ROMCOLLECTION_LAUNCHER, romcollection_id, launcher_id
+        )
+
+        remaining = [row for row in rows if row['launcher_id'] != launcher_id]
+
+        if removed_was_default and len(remaining) == 1:
+            self._uow.execute(
+                qry.UPDATE_ROMCOLLECTION_LAUNCHER,
+                True,
+                romcollection_id,
+                remaining[0]['launcher_id']
+            )
 
     def add_ruleset_to_romcollection(self, romcollection_id: str, ruleset: RuleSet):
         self._uow.execute(qry.INSERT_RULESET_FOR_ROMCOLLECTION,
@@ -1583,7 +1611,31 @@ class ROMsRepository(object):
         self._uow.execute(qry.DELETE_ROMS_BY_COLLECTION, romcollection_id)
 
     def remove_launcher(self, rom_id: str, launcher_id: str):
-        self._uow.execute(qry.DELETE_ROM_LAUNCHER, rom_id, launcher_id)
+        # Capture the existing ROM-specific default before removal.
+        rows = self._uow.execute(
+            "SELECT launcher_id, is_default FROM rom_launchers "
+            "WHERE rom_id = ?",
+            rom_id
+        ).fetchall()
+
+        removed_was_default = any(
+            row['launcher_id'] == launcher_id and row['is_default']
+            for row in rows
+        )
+
+        self._uow.execute(
+            qry.DELETE_ROM_LAUNCHER, rom_id, launcher_id
+        )
+
+        remaining = [row for row in rows if row['launcher_id'] != launcher_id]
+
+        if removed_was_default and len(remaining) == 1:
+            self._uow.execute(
+                qry.UPDATE_ROM_LAUNCHER,
+                True,
+                rom_id,
+                remaining[0]['launcher_id']
+            )
 
     def insert_tag(self, tag: str) -> str:
         db_id = text.misc_generate_random_SID()
@@ -1900,7 +1952,31 @@ class SourcesRepository(object):
         self._uow.execute(qry.REMOVE_ROMS_FROM_SOURCE, source_id)
     
     def remove_launcher(self, source_id: str, launcher_id: str):
-        self._uow.execute(qry.DELETE_SOURCE_LAUNCHER, source_id, launcher_id)
+        # Capture the existing source-specific default before removal.
+        rows = self._uow.execute(
+            "SELECT launcher_id, is_default FROM source_launchers "
+            "WHERE source_id = ?",
+            source_id
+        ).fetchall()
+
+        removed_was_default = any(
+            row['launcher_id'] == launcher_id and row['is_default']
+            for row in rows
+        )
+
+        self._uow.execute(
+            qry.DELETE_SOURCE_LAUNCHER, source_id, launcher_id
+        )
+
+        remaining = [row for row in rows if row['launcher_id'] != launcher_id]
+
+        if removed_was_default and len(remaining) == 1:
+            self._uow.execute(
+                qry.UPDATE_SOURCE_LAUNCHER,
+                True,
+                source_id,
+                remaining[0]['launcher_id']
+            )
      
     def _insert_asset_path(self, asset_path: AssetPath, source: Source):
         asset_db_id = text.misc_generate_random_SID()
@@ -1954,5 +2030,26 @@ class LaunchersRepository(object):
         self._uow.execute(qry.UPDATE_LAUNCHER, launcher.get_name(), launcher.get_settings_str(), launcher.get_id())
         
     def delete_launcher(self, launcher: ROMLauncherAddon):
-        self.logger.info(f"LaunchersRepository.delete_launcher(): Deleting source '{launcher.get_id()}'")
-        self._uow.execute(qry.DELETE_LAUNCHER, launcher.get_id())
+        self.logger.info(f"LaunchersRepository.delete_launcher(): Deleting launcher '{launcher.get_id()}'")
+        launcher_id = launcher.get_id()
+
+        # Remove associations through their repositories so that default
+        # promotion rules are applied independently to each association.
+        associations = (
+            ("source_launchers", "source_id", SourcesRepository),
+            ("romcollection_launchers", "romcollection_id", ROMCollectionRepository),
+            ("rom_launchers", "rom_id", ROMsRepository),
+        )
+
+        for table, owner_column, repository_class in associations:
+            rows = self._uow.execute(
+                f"SELECT {owner_column} FROM {table} WHERE launcher_id = ?",
+                launcher_id
+            ).fetchall()
+
+            repository = repository_class(self._uow)
+
+            for row in rows:
+                repository.remove_launcher(row[owner_column], launcher_id)
+
+        self._uow.execute(qry.DELETE_LAUNCHER, launcher_id)

@@ -398,6 +398,7 @@
                 </setting>
                 <setting id="run_database_migrations" type="string" label="40857" help="">
                     <level>3</level>
+                    <visible>false</visible>
                     <default/>
                     <constraints>
                         <allowempty>true</allowempty>
@@ -423,8 +424,33 @@
                     <default>false</default>
                     <control type="toggle"/>
                 </setting>
+                <setting id="rom_url_view_migration_version" type="integer" label="44041" help="">
+                    <level>3</level>
+                    <visible>false</visible>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>0</minimum>
+                        <maximum>999</maximum>
+                    </constraints>
+                    <control type="edit" format="integer">
+                        <heading>44041</heading>
+                    </control>
+                </setting>
+                <setting id="collection_launcher_inheritance_migration_version" type="integer" label="44041" help="">
+                    <level>3</level>
+                    <visible>false</visible>
+                    <default>0</default>
+                    <constraints>
+                        <minimum>0</minimum>
+                        <maximum>999</maximum>
+                    </constraints>
+                    <control type="edit" format="integer">
+                        <heading>44041</heading>
+                    </control>
+                </setting>
                 <setting id="setup_wizard_notice_version" type="integer" label="44041" help="">
                     <level>3</level>
+                    <visible>false</visible>
                     <default>0</default>
                     <constraints>
                         <minimum>0</minimum>

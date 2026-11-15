@@ -603,7 +603,8 @@ def _render_romcollection_view(romcollection_obj: ROMCollection, roms_repository
             rom.apply_romcollection_asset_mapping(romcollection_obj)
             view_items.append(render_rom_listitem(
                 rom,
-                romcollection_obj.get_view_assets().get('controller', '')
+                romcollection_obj.get_view_assets().get('controller', ''),
+                romcollection_obj.get_id()
             ))
         except Exception:
             logger.exception(f'Exception while rendering list item ROM "{rom.get_name()}"')
@@ -880,7 +881,7 @@ def _render_romcollection_listitem(
     #if not settings.getSettingAsBool('display_hide_LB_scraper'):  render_vcategory_LB_offline_scraper_row()
 
 
-def render_rom_listitem(rom_obj: ROM, controller_path='') -> dict:
+def render_rom_listitem(rom_obj: ROM, controller_path='', romcollection_id=None) -> dict:
     # --- Do not render row if romcollection finished ---
     if rom_obj.is_finished() and settings.getSettingAsBool('display_hide_finished'):
         return
@@ -958,9 +959,15 @@ def render_rom_listitem(rom_obj: ROM, controller_path='') -> dict:
         sub_label = None
 
     if settings.getSettingAsBool("display_execute_rom_by_default"):
-        item_url = globals.router.url_for_path(f'execute/rom/{rom_obj.get_id()}')
+        item_path = f'execute/rom/{rom_obj.get_id()}'
     else:
-        item_url = globals.router.url_for_path(f'rom/view/{rom_obj.get_id()}')
+        item_path = f'rom/view/{rom_obj.get_id()}'
+
+    if romcollection_id:
+        from urllib.parse import urlencode
+        item_path += '?' + urlencode({'collection_id': romcollection_id})
+
+    item_url = globals.router.url_for_path(item_path)
 
     # Kodi's video ListItem API expects LastPlayed as a formatted string,
     # not a Python datetime object.  Supplying the exact expected format is

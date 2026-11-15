@@ -790,7 +790,24 @@ def qry_listitem_context_menu_items(list_item_data, container_data) -> typing.Li
     
     commands = []
     if is_rom:
-        commands.append((kodi.translate(40882), _context_menu_url_for(f'/rom/view/{item_id}')))
+        rom_context = (
+            {'collection_id': container_id}
+            if container_type == constants.OBJ_ROMCOLLECTION and container_id
+            else None
+        )
+        commands.append((
+            kodi.translate(40882),
+            _context_menu_url_for(f'/rom/view/{item_id}', rom_context)
+        ))
+        launch_with_params = {'select_launcher': '1'}
+        if rom_context:
+            launch_with_params.update(rom_context)
+        commands.append((
+            kodi.translate(44173),
+            _context_menu_url_for(
+                f'/execute/rom/{item_id}', launch_with_params
+            )
+        ))
         commands.append((kodi.translate(40883), _context_menu_url_for(f'/rom/edit/{item_id}')))
         commands.append((kodi.translate(40884), _context_menu_url_for('/execute/command/link_rom', {'rom_id': item_id})))
         commands.append((kodi.translate(40885), _context_menu_url_for('/execute/command/add_rom_to_favourites', {'rom_id': item_id})))

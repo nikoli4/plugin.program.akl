@@ -2895,3 +2895,8 @@ msgstr ""
 msgctxt "#44172"
 msgid "Review optional launchers, scrapers, skins, and AKL components"
 msgstr ""
+
+# Launch ROM with a selected launcher
+msgctxt "#44173"
+msgid "Launch With..."
+msgstr ""

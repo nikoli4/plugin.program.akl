@@ -1,3 +1,13 @@
+## 1.7.11
+
+- Added Launch With... to select a launcher for an individual game.
+- Improved default launcher selection for ROMs, collections, and sources.
+- Fixed launcher associations leaking between collections.
+- Automatically select a default launcher when appropriate and promote a remaining launcher when the default is removed.
+- Improved launcher deletion cleanup across associations.
+- Added migration handling for existing collections without an assigned launcher.
+- Rebuilt generated views to support collection-aware ROM URLs.
+
 ## 1.7.10
 
 - Fixed a missing Kodi API import that prevented RetroPlayer launches when cache management was initialized.

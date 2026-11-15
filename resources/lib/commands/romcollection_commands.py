@@ -122,10 +122,7 @@ def cmd_edit_romcollection(args):
     options[ROMCOLLECTION_EDIT_METADATA] = kodi.translate(40853)
     options[ROMCOLLECTION_EDIT_ASSETS] = kodi.translate(40854)
     options['SCRAPE_SYSTEM'] = kodi.translate(44150)
-    if romcollection.has_launchers():
-        options['EDIT_ROMCOLLECTION_LAUNCHERS'] = kodi.translate(42016)
-    else:
-        options['ADD_COLLECTION_LAUNCHER'] = kodi.translate(42026)
+    options['EDIT_ROMCOLLECTION_LAUNCHERS'] = kodi.translate(42016)
     options['ROMCOLLECTION_MANAGE_ROMS'] = kodi.translate(42039)
     options['EDIT_ROMCOLLECTION_CATEGORY'] = kodi.translate(42040).format(category_name)
     options['EDIT_ROMCOLLECTION_STATUS'] = kodi.translate(42041).format(kodi.translate(romcollection.get_finished_str_code()))

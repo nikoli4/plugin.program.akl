@@ -256,7 +256,7 @@ def cmd_add_rom_launchers(args):
         logger.debug(f'Selected {selected_option.get_id()}')
         is_default = kodi.dialog_yesno(kodi.translate(41171).format(selected_option.get_name()))
         
-        rom.add_launcher(launcher, is_default)
+        rom.add_launcher(selected_option, is_default)
         rom_repository.update_rom(rom)
         logger.info(f'Added launcher#{selected_option.get_id()} to ROM {rom.get_id()}')
         uow.commit()
@@ -735,6 +735,8 @@ def _dispatch_launch_stats(managed_enabled, managed_stats_args, legacy_args):
 @AppMediator.register('EXECUTE_ROM')
 def cmd_execute_rom_with_launcher(args):
     rom_id: str = args['rom_id'] if 'rom_id' in args else None
+    requested_collection_id = args.get('romcollection_id')
+    force_launcher_selection = args.get('force_launcher_selection') is True
     uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
     with uow:
         rom_repository = ROMsRepository(uow)
@@ -745,18 +747,41 @@ def cmd_execute_rom_with_launcher(args):
         rom = rom_repository.find_rom(rom_id)
         logger.info(f'Executing ROM {rom.get_name()}')
         
-        romcollections = romcollection_repository.find_romcollections_by_rom(rom.get_id())
+        romcollections = list(
+            romcollection_repository.find_romcollections_by_rom(rom.get_id())
+        )
+        active_collection = next(
+            (collection for collection in romcollections
+             if collection.get_id() == requested_collection_id),
+            None
+        )
+        if requested_collection_id and active_collection is None:
+            logger.warning(
+                'EXECUTE_ROM: Collection %s does not contain ROM %s; '
+                'ignoring collection context.',
+                requested_collection_id, rom.get_id()
+            )
+
         source = source_repository.find(rom.get_scanned_by())
-        launchers = rom.get_launchers()
-        if launchers is None:
-            launchers = []
-        
+        launchers = list(rom.get_launchers() or [])
+
         if source:
             launchers.extend(source.get_launchers())
-        
-        for romcollection in romcollections:
-            launchers.extend(romcollection.get_launchers())
-        
+
+        if active_collection:
+            launchers.extend(active_collection.get_launchers())
+
+        # Preserve collection-only launchers for ROM-only execution URLs.
+        # Multiple distinct launchers are handled by the selection dialog.
+        if not requested_collection_id and not launchers:
+            collection_launchers = {}
+            for collection in romcollections:
+                for launcher in collection.get_launchers():
+                    collection_launchers.setdefault(launcher.get_id(), launcher)
+
+            if collection_launchers:
+                launchers.extend(collection_launchers.values())
+
         if len(launchers) == 0:
             is_standalone_src = rom.get_scanned_data_element("standalone")
             file_path = rom.get_scanned_data_element("file")
@@ -784,16 +809,41 @@ def cmd_execute_rom_with_launcher(args):
                 kodi.notify_warn(kodi.translate(41001))
                 return
             
-    selected_launcher = launchers[0]
-    if len(launchers) > 1:
-        launcher_options = collections.OrderedDict()
-        preselected = None
-        for launcher in launchers:
-            launcher_options[launcher] = launcher.get_name()
-            if launcher.is_default():
-                preselected = launcher
-        dialog = kodi.OrdDictionaryDialog()
-        selected_launcher = dialog.select(kodi.translate(41105), launcher_options, preselect=preselected)
+    # Preserve association-specific default priority before deduplication.
+    default_candidates = [
+        next((launcher for launcher in rom.get_launchers() or []
+              if launcher.is_default()), None),
+        next((launcher for launcher in active_collection.get_launchers()
+              if launcher.is_default()), None) if active_collection else None,
+        next((launcher for launcher in source.get_launchers()
+              if launcher.is_default()), None) if source else None
+    ]
+
+    # A launcher can be associated with multiple levels. Show each ID once.
+    unique_launchers = collections.OrderedDict()
+    for launcher in launchers:
+        unique_launchers.setdefault(launcher.get_id(), launcher)
+
+    launchers = list(unique_launchers.values())
+
+    selected_launcher = None
+    if not force_launcher_selection:
+        selected_launcher = next(
+            (launcher for launcher in default_candidates if launcher is not None),
+            None
+        )
+
+    if selected_launcher is None:
+        if len(launchers) == 1:
+            selected_launcher = launchers[0]
+        elif len(launchers) > 1:
+            launcher_options = collections.OrderedDict(
+                (launcher, launcher.get_name()) for launcher in launchers
+            )
+            dialog = kodi.OrdDictionaryDialog()
+            selected_launcher = dialog.select(
+                kodi.translate(41105), launcher_options
+            )
 
     if selected_launcher is None:
         return

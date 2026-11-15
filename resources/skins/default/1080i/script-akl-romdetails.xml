@@ -505,7 +505,8 @@
 						<textureradiooffdisabled colordiffuse="40FFFFFF">icons/launch.png</textureradiooffdisabled>
 						<textureradioondisabled colordiffuse="40FFFFFF">icons/launch.png</textureradioondisabled>
 						<label>$ADDON[plugin.program.akl 40851]</label>
-						<onclick>RunPlugin(plugin://plugin.program.akl/execute/rom/$INFO[Container(19801).ListItem.Property(entityid)])</onclick>
+						<onclick condition="!String.IsEmpty(Window.Property(AKLCollectionId))">RunPlugin(plugin://plugin.program.akl/execute/rom/$INFO[Container(19801).ListItem.Property(entityid)]?collection_id=$INFO[Window.Property(AKLCollectionId)])</onclick>
+                                          <onclick condition="String.IsEmpty(Window.Property(AKLCollectionId))">RunPlugin(plugin://plugin.program.akl/execute/rom/$INFO[Container(19801).ListItem.Property(entityid)])</onclick>
 						<animation effect="fade" start="100" end="0" time="300" delay="300">Hidden</animation>
 					</control>
 					<control type="radiobutton" id="19981">

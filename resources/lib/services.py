@@ -428,6 +428,14 @@ class AppService(object):
 
         self._restore_pending_collection()
 
+        # Rebuild cached views once after the ROM URL format upgrade.
+        # This runs after managed-launcher collection restoration.
+        self._run_rom_url_view_migration()
+
+        # Inherit missing collection launchers from associated sources once.
+        # Existing collection launchers and ROM overrides are preserved.
+        self._run_collection_launcher_inheritance_migration()
+
 
 
 
@@ -1174,6 +1182,244 @@ class AppService(object):
 
 
 
+    def _run_rom_url_view_migration(self):
+        """Rebuild generated views once after the ROM URL format upgrade."""
+        migration_version = 1
+        setting_id = 'rom_url_view_migration_version'
+
+        try:
+            completed_version = int(
+                settings.getSetting(setting_id) or '0'
+            )
+        except (TypeError, ValueError):
+            completed_version = 0
+
+        if completed_version >= migration_version:
+            logger.debug(
+                'ROM_URL_MIGRATION: View migration already completed.'
+            )
+            return
+
+        logger.info(
+            'ROM_URL_MIGRATION: Starting one-time view rebuild.'
+        )
+
+        try:
+            from resources.lib.commands.view_rendering_commands import (
+                cmd_render_views_data,
+                cmd_render_virtual_views
+            )
+
+            if self.monitor.abortRequested():
+                logger.info(
+                    'ROM_URL_MIGRATION: Kodi shutdown requested; '
+                    'migration deferred.'
+                )
+                return
+
+            cmd_render_views_data({'force': True})
+
+            if self.monitor.abortRequested():
+                logger.info(
+                    'ROM_URL_MIGRATION: Kodi shutdown requested after '
+                    'regular views; migration deferred.'
+                )
+                return
+
+            cmd_render_virtual_views({})
+
+            if self.monitor.abortRequested():
+                logger.info(
+                    'ROM_URL_MIGRATION: Kodi shutdown requested after '
+                    'virtual views; migration deferred.'
+                )
+                return
+
+            settings.setSetting(
+                setting_id,
+                str(migration_version)
+            )
+
+            logger.info(
+                'ROM_URL_MIGRATION: View migration completed successfully.'
+            )
+
+        except Exception:
+            logger.exception(
+                'ROM_URL_MIGRATION: View rebuild failed; '
+                'will retry on next startup.'
+            )
+
+    def _run_collection_launcher_inheritance_migration(self):
+        """Populate missing collection launchers from associated sources once."""
+        migration_version = 1
+        setting_id = 'collection_launcher_inheritance_migration_version'
+
+        try:
+            completed_version = int(settings.getSetting(setting_id) or '0')
+        except (TypeError, ValueError):
+            completed_version = 0
+
+        if completed_version >= migration_version:
+            logger.debug(
+                'COLLECTION_LAUNCHER_MIGRATION: Already completed.'
+            )
+            return
+
+        if self.monitor.abortRequested():
+            logger.info(
+                'COLLECTION_LAUNCHER_MIGRATION: Shutdown requested; deferred.'
+            )
+            return
+
+        logger.info(
+            'COLLECTION_LAUNCHER_MIGRATION: Starting one-time migration.'
+        )
+
+        try:
+            from resources.lib.repositories import (
+                ROMCollectionRepository,
+                LaunchersRepository
+            )
+
+            inherited = 0
+            preserved = 0
+            ambiguous = 0
+            unavailable = 0
+
+            uow = UnitOfWork(globals.g_PATHS.DATABASE_FILE_PATH)
+            with uow:
+                repository = ROMCollectionRepository(uow)
+                launcher_repository = LaunchersRepository(uow)
+
+                # Load IDs separately. find_all_romcollections() does not
+                # populate launcher associations.
+                collection_ids = [
+                    collection.get_id()
+                    for collection in repository.find_all_romcollections()
+                ]
+
+                available_launcher_ids = {
+                    launcher.get_id()
+                    for launcher in launcher_repository.find_all()
+                }
+
+                for collection_id in collection_ids:
+                    if self.monitor.abortRequested():
+                        logger.info(
+                            'COLLECTION_LAUNCHER_MIGRATION: Shutdown requested; '
+                            'transaction will be rolled back.'
+                        )
+                        uow.rollback()
+                        return
+
+                    collection = repository.find_romcollection(collection_id)
+
+                    if collection is None:
+                        continue
+
+                    if collection.has_launchers():
+                        preserved += 1
+                        continue
+
+                    # Inspect source relationships directly. Missing sources
+                    # are ignored; no source rules are modified.
+                    rows = uow.execute(
+                        'SELECT DISTINCT r.source_id '
+                        'FROM collection_source_ruleset r '
+                        'INNER JOIN sources s ON s.id = r.source_id '
+                        'WHERE r.collection_id = ?',
+                        collection_id
+                    ).fetchall()
+
+                    candidates = set()
+
+                    for row in rows:
+                        source_id = row['source_id']
+
+                        source_launchers = uow.execute(
+                            'SELECT sl.launcher_id, sl.is_default '
+                            'FROM source_launchers sl '
+                            'INNER JOIN launchers l '
+                            'ON l.id = sl.launcher_id '
+                            'WHERE sl.source_id = ? '
+                            'ORDER BY sl.is_default DESC, sl.rowid ASC',
+                            source_id
+                        ).fetchall()
+
+                        if not source_launchers:
+                            continue
+
+                        launcher_id = source_launchers[0]['launcher_id']
+
+                        if launcher_id in available_launcher_ids:
+                            candidates.add(launcher_id)
+
+                    if len(candidates) == 0:
+                        unavailable += 1
+                        logger.info(
+                            'COLLECTION_LAUNCHER_MIGRATION: No valid source '
+                            'launcher for collection %s (%s).',
+                            collection.get_name(), collection_id
+                        )
+                        continue
+
+                    if len(candidates) > 1:
+                        ambiguous += 1
+                        logger.warning(
+                            'COLLECTION_LAUNCHER_MIGRATION: Conflicting '
+                            'source launchers for collection %s (%s): %s',
+                            collection.get_name(),
+                            collection_id,
+                            sorted(candidates)
+                        )
+                        continue
+
+                    launcher_id = next(iter(candidates))
+
+                    # Obtain an independent launcher object for this
+                    # collection. add_launcher() modifies is_default.
+                    launcher = launcher_repository.find(launcher_id)
+
+                    if launcher is None:
+                        unavailable += 1
+                        continue
+
+                    # Insert only the missing launcher association.
+                    # Do not rewrite collection metadata, artwork, or
+                    # any existing ROM-specific launcher overrides.
+                    uow.execute(
+                        'INSERT INTO romcollection_launchers '
+                        '(launcher_id, romcollection_id, is_default) '
+                        'VALUES (?, ?, ?)',
+                        launcher_id,
+                        collection_id,
+                        1
+                    )
+                    inherited += 1
+
+                    logger.info(
+                        'COLLECTION_LAUNCHER_MIGRATION: Inherited launcher '
+                        '%s for collection %s.',
+                        launcher.get_name(),
+                        collection.get_name()
+                    )
+
+                uow.commit()
+
+            settings.setSetting(setting_id, str(migration_version))
+
+            logger.info(
+                'COLLECTION_LAUNCHER_MIGRATION: Completed. '
+                'Inherited=%d Preserved=%d Ambiguous=%d Unavailable=%d',
+                inherited, preserved, ambiguous, unavailable
+            )
+
+        except Exception:
+            logger.exception(
+                'COLLECTION_LAUNCHER_MIGRATION: Failed; '
+                'will retry on next startup.'
+            )
     def _perform_scans(self):
 
 

@@ -1490,11 +1490,15 @@ class Source(ROMAddon):
         return len(self.launchers_data) > 0
 
     def add_launcher(self, launcher: ROMLauncherAddon, is_default: bool = False):
-        if is_default:
-            current_default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
-            if current_default_launcher:
-                current_default_launcher.set_default(False)
+        # The first launcher becomes the explicit default automatically.
+        make_default = is_default or not self.launchers_data
 
+        if make_default:
+            for existing_launcher in self.launchers_data:
+                if existing_launcher.is_default():
+                    existing_launcher.set_default(False)
+
+        launcher.set_default(make_default)
         self.launchers_data.append(launcher)
         logger.debug(f'Adding launcher "{launcher.get_id()}" to Source "{self.get_name()}"')
 
@@ -2441,11 +2445,15 @@ class ROMCollection(MetaDataItemABC):
         return len(self.launchers_data) > 0
 
     def add_launcher(self, launcher: ROMLauncherAddon, is_default: bool = False):
-        if is_default:
-            current_default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
-            if current_default_launcher:
-                current_default_launcher.set_default(False)
+        # The first launcher becomes the explicit default automatically.
+        make_default = is_default or not self.launchers_data
 
+        if make_default:
+            for existing_launcher in self.launchers_data:
+                if existing_launcher.is_default():
+                    existing_launcher.set_default(False)
+
+        launcher.set_default(make_default)
         self.launchers_data.append(launcher)
         logger.debug(f'Adding launcher "{launcher.get_id()}" to collection "{self.get_name()}"')
 
@@ -2853,11 +2861,15 @@ class ROM(MetaDataItemABC):
         return len(self.launchers_data) > 0
 
     def add_launcher(self, launcher: ROMLauncherAddon, is_default: bool = False):
-        if is_default:
-            current_default_launcher = next((ld for ld in self.launchers_data if ld.is_default()), None)
-            if current_default_launcher:
-                current_default_launcher.set_default(False)
+        # The first launcher becomes the explicit default automatically.
+        make_default = is_default or not self.launchers_data
 
+        if make_default:
+            for existing_launcher in self.launchers_data:
+                if existing_launcher.is_default():
+                    existing_launcher.set_default(False)
+
+        launcher.set_default(make_default)
         self.launchers_data.append(launcher)
         logger.debug(f'Adding launcher "{launcher.get_id()}" to ROM "{self.get_name()}"')
 
